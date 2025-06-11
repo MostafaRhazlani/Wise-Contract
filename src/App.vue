@@ -1,13 +1,13 @@
-<script setup>
-
-</script>
-
 <template>
-  <main>
-    <RouterView />
-  </main>
+  <div id="app">
+    <router-view />
+  </div>
 </template>
 
-<style scoped>
+<script setup>
+// App component
+</script>
 
+<style>
+/* Global styles are in main.css */
 </style>
