@@ -4,8 +4,8 @@
   </div>
 </template>
 
-<script setup>
-// App component
+<script setup lang="ts">
+// App component with TypeScript
 </script>
 
 <style>

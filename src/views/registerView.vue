@@ -138,8 +138,16 @@ const loading = ref<boolean>(false)
 const errorMessage = ref<string | string[]>('')
 const successMessage = ref<string>('')
 
-// Form data matching your Postman request
-const registerForm = ref({
+// Register form with proper typing
+interface RegisterForm {
+  name: string
+  email: string
+  password: string
+  confirmation_password: string
+  phone: string
+}
+
+const registerForm = ref<RegisterForm>({
   name: '',
   email: '',
   password: '',

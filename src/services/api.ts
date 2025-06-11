@@ -1,4 +1,4 @@
-import axios, { AxiosResponse, AxiosError } from 'axios'
+import axios, { type AxiosResponse, AxiosError } from 'axios'
 
 const API_BASE_URL = 'http://127.0.0.1:8000/api'
 
@@ -21,7 +21,7 @@ export interface User {
   name: string
   email: string
   phone?: string
-  email_verified_at?: string
+  email_verified_at?: string | null
   created_at: string
   updated_at: string
 }
@@ -72,7 +72,6 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('auth_token')
       localStorage.removeItem('user')
-      // Don't redirect automatically to avoid loops
     }
     
     return Promise.reject(error)
