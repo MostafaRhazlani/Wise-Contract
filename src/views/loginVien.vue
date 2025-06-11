@@ -119,8 +119,14 @@ const loading = ref<boolean>(false)
 const errorMessage = ref<string | string[]>('')
 const successMessage = ref<string>('')
 
-// Login form data matching your API structure
-const loginForm = ref({
+// Login form with proper typing
+interface LoginForm {
+  email: string
+  password: string
+  remember: boolean
+}
+
+const loginForm = ref<LoginForm>({
   email: '',
   password: '',
   remember: false

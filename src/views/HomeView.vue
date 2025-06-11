@@ -1,21 +1,3 @@
-<script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { Heart, Star, Settings, Home, User, Mail, LogIn, UserPlus } from 'lucide-vue-next'
-
-const router = useRouter()
-const count = ref(0)
-const isVisible = ref(true)
-
-const goToAuth = () => {
-  router.push('/auth')
-}
-
-const goToRegister = () => {
-  router.push('/register')
-}
-</script>
-
 <template>
   <main class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
     <div class="max-w-4xl mx-auto">
@@ -135,6 +117,24 @@ const goToRegister = () => {
     </div>
   </main>
 </template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { Heart, Star, Settings, Home, User, Mail, LogIn, UserPlus } from 'lucide-vue-next'
+
+const router = useRouter()
+const count = ref<number>(0)
+const isVisible = ref<boolean>(true)
+
+const goToAuth = (): void => {
+  router.push('/auth')
+}
+
+const goToRegister = (): void => {
+  router.push('/register')
+}
+</script>
 
 <style scoped>
 /* Custom styles if needed - Tailwind should handle most styling */
