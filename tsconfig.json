@@ -9,7 +9,7 @@
     "strict": true,
     "noEmit": true,
     "jsx": "preserve",
-    "moduleResolution": "bundler",
+    "moduleResolution": "node",
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,

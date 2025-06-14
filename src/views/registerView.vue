@@ -12,13 +12,10 @@
       </div>
 
       <!-- Error Message -->
-      <div v-if="errorMessage" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-        <div v-if="Array.isArray(errorMessage)">
-          <ul class="list-disc list-inside">
-            <li v-for="error in errorMessage" :key="error">{{ error }}</li>
-          </ul>
-        </div>
-        <div v-else>{{ errorMessage }}</div>
+      <div v-if="errors.general" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+        <ul class="list-disc list-inside">
+          <li v-for="error in errors.general" :key="error">{{ error }}</li>
+        </ul>
       </div>
 
       <!-- Success Message -->
@@ -36,9 +33,10 @@
             type="text"
             placeholder="Enter your full name"
             class="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"
-            required
+            :class="{ 'border-red-500': errors.name }"
             :disabled="loading"
           />
+          <p v-if="errors.name" class="mt-1 text-sm text-red-600">{{ errors.name[0] }}</p>
         </div>
 
         <!-- Email -->
@@ -49,9 +47,10 @@
             type="email"
             placeholder="Enter your email"
             class="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"
-            required
+            :class="{ 'border-red-500': errors.email }"
             :disabled="loading"
           />
+          <p v-if="errors.email" class="mt-1 text-sm text-red-600">{{ errors.email[0] }}</p>
         </div>
 
         <!-- Password -->
@@ -62,9 +61,10 @@
             type="password"
             placeholder="Create a password"
             class="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"
-            required
+            :class="{ 'border-red-500': errors.password }"
             :disabled="loading"
           />
+          <p v-if="errors.password" class="mt-1 text-sm text-red-600">{{ errors.password[0] }}</p>
         </div>
 
         <!-- Confirm Password -->
@@ -75,21 +75,24 @@
             type="password"
             placeholder="Confirm your password"
             class="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"
-            required
+            :class="{ 'border-red-500': errors.confirmation_password }"
             :disabled="loading"
           />
+          <p v-if="errors.confirmation_password" class="mt-1 text-sm text-red-600">{{ errors.confirmation_password[0] }}</p>
         </div>
 
-        <!-- Phone (Optional - as shown in your Postman) -->
+        <!-- Phone -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Phone (Optional)</label>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
           <input
             v-model="registerForm.phone"
             type="tel"
             placeholder="Enter your phone number"
             class="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"
+            :class="{ 'border-red-500': errors.phone }"
             :disabled="loading"
           />
+          <p v-if="errors.phone" class="mt-1 text-sm text-red-600">{{ errors.phone[0] }}</p>
         </div>
 
         <!-- Register Button -->
@@ -101,15 +104,6 @@
           {{ loading ? 'Creating Account...' : 'Sign Up' }}
         </button>
       </form>
-
-      <!-- Back to Home Button -->
-      <button
-        @click="goToHome"
-        :disabled="loading"
-        class="w-full mt-4 py-2 border border-green-600 text-green-600 rounded hover:bg-green-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        Back to Home
-      </button>
 
       <!-- Sign In Link -->
       <div class="text-center mt-6">
@@ -129,16 +123,14 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { authAPI, type ApiErrorResponse } from '../services/api'
-import type { AxiosError } from 'axios'
+import axios from '../plugins/axios'
 
 const router = useRouter()
 
 const loading = ref<boolean>(false)
-const errorMessage = ref<string | string[]>('')
+const errors = ref<Record<string, string[]>>({})
 const successMessage = ref<string>('')
 
-// Register form with proper typing
 interface RegisterForm {
   name: string
   email: string
@@ -155,40 +147,24 @@ const registerForm = ref<RegisterForm>({
   phone: ''
 })
 
+const clearErrors = () => {
+  errors.value = {}
+}
+
 const handleRegister = async (): Promise<void> => {
-  // Clear previous messages
-  errorMessage.value = ''
+  clearErrors()
   successMessage.value = ''
-
-  // Validate passwords match
-  if (registerForm.value.password !== registerForm.value.confirmation_password) {
-    errorMessage.value = 'Passwords do not match!'
-    return
-  }
-
-  // Validate password length
-  if (registerForm.value.password.length < 6) {
-    errorMessage.value = 'Password must be at least 6 characters long!'
-    return
-  }
-
   loading.value = true
 
   try {
-    // Send data exactly as shown in your Postman
-    const response = await authAPI.register({
+    const response = await axios.post('/register', {
       name: registerForm.value.name,
       email: registerForm.value.email,
       password: registerForm.value.password,
       confirmation_password: registerForm.value.confirmation_password,
       phone: registerForm.value.phone
     })
-
-    console.log('Registration successful:', response.data)
     
-    successMessage.value = 'Account created successfully! Redirecting to login...'
-    
-    // Clear form
     registerForm.value = {
       name: '',
       email: '',
@@ -197,54 +173,25 @@ const handleRegister = async (): Promise<void> => {
       phone: ''
     }
 
-    // Redirect to login after 2 seconds
+    successMessage.value = 'Account created successfully! Redirecting to login...'
+    
     setTimeout(() => {
-      router.push('/auth')
+      router.push('/login')
     }, 2000)
 
-  } catch (error) {
-    console.error('Registration failed:', error)
-    
-    const axiosError = error as AxiosError<ApiErrorResponse>
-    
-    if (axiosError.response) {
-      const { status, data } = axiosError.response
-      
-      if (status === 422) {
-        // Handle validation errors like in your Postman response
-        if (data.errors) {
-          // Convert errors object to array of strings
-          const errorArray: string[] = []
-          Object.keys(data.errors).forEach(key => {
-            if (Array.isArray(data.errors![key])) {
-              errorArray.push(...data.errors![key])
-            }
-          })
-          errorMessage.value = errorArray
-        } else {
-          errorMessage.value = data.message || 'Validation failed'
-        }
-      } else if (status === 409) {
-        errorMessage.value = 'Email already exists'
-      } else {
-        errorMessage.value = data.message || 'Registration failed'
-      }
-    } else if (axiosError.request) {
-      errorMessage.value = 'Network error. Please check your connection and try again.'
+  } catch (error: any) {
+    if (error.response?.data?.errors) {
+      errors.value = error.response.data.errors
     } else {
-      errorMessage.value = 'Something went wrong. Please try again.'
+      errors.value = { general: ['Registration failed'] }
     }
   } finally {
     loading.value = false
   }
 }
 
-const goToHome = (): void => {
-  router.push('/')
-}
-
 const goToLogin = (): void => {
-  router.push('/auth')
+  router.push('/login')
 }
 </script>
 
