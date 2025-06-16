@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onUnmounted, defineComponent } from 'vue'
 import { useAuthStore } from '../../store/authStore'
 import { useRouter } from 'vue-router'
+import UserProfileModal from '../../components/UserProfileModal.vue'
 import {
   MenuIcon,
   HomeIcon,
@@ -124,10 +125,10 @@ export default defineComponent({
       <!-- Profile Section -->
       <div class="absolute bottom-0 left-0 right-0 p-3">
         <div class="relative">
-          <button @click="toggleProfileModal"
+          <button @click="showProfileModal = !showProfileModal"
             class="flex items-center w-full p-2 hover:bg-gray-50 rounded-lg transition-colors">
             <div
-              class="w-8 h-8 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center flex-shrink-0">
+              class="w-8 h-8 bg-gradient-to-br from-red-400 to-red-600 rounded-full flex items-center justify-center flex-shrink-0">
               <span class="text-white text-sm font-semibold">{{ userInitials }}</span>
             </div>
             <div v-if="sidebarExpanded" class="ml-3 text-left">
@@ -136,21 +137,10 @@ export default defineComponent({
             </div>
           </button>
 
-          <!-- Profile Modal -->
-          <div v-if="showProfileModal"
-            class="absolute bottom-full left-0 mb-2 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50"
-            :class="sidebarExpanded ? 'w-full' : 'w-48'">
-            <button @click="handleSettings"
-              class="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-              <SettingsIcon class="w-4 h-4 mr-3" />
-              Settings
-            </button>
-            <button @click="handleLogout"
-              class="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
-              <LogOutIcon class="w-4 h-4 mr-3" />
-              Logout
-            </button>
-          </div>
+          <UserProfileModal
+            v-model:show="showProfileModal"
+            position="bottom"
+          />
         </div>
       </div>
     </div>
