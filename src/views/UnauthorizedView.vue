@@ -12,11 +12,20 @@
 </template>
 
 <script setup lang="ts">
-import { useRouter } from 'vue-router'
+import { useRouter } from 'vue-router';
+import { useAuthStore } from '@/store/authStore';
 
-const router = useRouter()
+const authStore = useAuthStore();
+const router = useRouter();
 
 const goToHome = () => {
-    router.push('/')
-}
+    if (authStore.userRole === 3) {
+        router.push({ name: 'ManagerDashboard' });
+    } else if (authStore.userRole === 4) {
+        router.push({ name: 'Home' });
+    } else {
+        // If no role is set, redirect to login
+        router.push({ name: 'Login' });
+    }
+};
 </script>
