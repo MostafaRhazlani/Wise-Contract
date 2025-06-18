@@ -1,15 +1,7 @@
 <template>
   <div class="bg-slate-100">
     <!-- Header with navigation -->
-    <div class="bg-green-400 p-2 flex justify-between items-center">
-      <div class="flex items-center space-x-2">
-        <button @click="exportToPDF" class="p-2 hover:bg-green-500 rounded">
-          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-        </button>
-      </div>
+    <div class="bg-green-400 p-2 flex justify-end items-center">
       <!-- User Profile Section -->
       <div class="relative">
         <button @click="userModalOpen = !userModalOpen"
@@ -55,8 +47,7 @@
                 class="p-2 bg-gray-100 rounded cursor-pointer hover:bg-gray-200 text-sm transition-colors border border-transparent hover:border-gray-300">
                 <div class="flex items-center justify-between">
                   <div>
-                    <code class="text-blue-600">{{ variable.syntax }}</code>
-                    <div class="text-xs text-gray-500">{{ variable.description }}</div>
+                    <span class="text-gray-900">{{ variable.display }}</span>
                   </div>
                 </div>
               </div>
@@ -77,32 +68,33 @@ import { useEditor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import TextAlign from '@tiptap/extension-text-align'
 import Underline from '@tiptap/extension-underline'
+import Color from '@tiptap/extension-color'
+import TextStyle from '@tiptap/extension-text-style'
 import EditorToolbar from '@/components/EditorToolbar.vue'
 
 // Types
 interface DynamicVariable {
   key: string;
-  syntax: string;
-  description: string;
-}
-
-interface CurrentUser {
-  id: number;
-  name: string;
-  email: string;
-  profile_image?: string;
+  label: string;
+  display: string;
 }
 
 // Reactive state
 const editor = useEditor({
-  content: '',
+  content: localStorage.getItem('editorContent') || '',
   extensions: [
     StarterKit,
     Underline,
+    TextStyle,
+    Color,
     TextAlign.configure({
       types: ['heading', 'paragraph'],
     }),
   ],
+  onUpdate: ({ editor }) => {
+    // Save content to localStorage whenever it changes
+    localStorage.setItem('editorContent', editor.getHTML())
+  }
 })
 
 const userModalOpen = ref<boolean>(false);
@@ -110,25 +102,11 @@ const authStore = useAuthStore();
 
 // Data
 const dynamicVariables = ref<DynamicVariable[]>([
-  { key: "employee_name", syntax: "{employee_name}", description: "Selected user name" },
-  {
-    key: "employee_email",
-    syntax: "{employee_email}",
-    description: "Selected user email",
-  },
-  {
-    key: "employee_department",
-    syntax: "{employee_department}",
-    description: "Selected user department",
-  },
-  {
-    key: "employee_position",
-    syntax: "{employee_position}",
-    description: "Selected user position",
-  },
-  { key: "company_name", syntax: "{company_name}", description: "Company name" },
-  { key: "current_date", syntax: "{current_date}", description: "Current date" },
-  { key: "start_date", syntax: "{start_date}", description: "Contract start date" },
+  { key: "full_name", label: "{{full_name}}", display: "Full name" },
+  { key: "phone", label: "{{email}}", display: "Email"},
+  { key: "email", label: "{{phone}}", display: "Phone"},
+  { key: "department", label: "{department.department_name}", display: "Department"},
+  { key: "company_name", label: "{{company_name}}", display: "Company Name" },
 ]);
 
 // Computed
@@ -143,20 +121,20 @@ const userInitials = computed(() => {
 
 // Methods
 const insertVariable = (variableKey: string) => {
-  const syntax = `{${variableKey}}`;
+  const label = `{{${variableKey}}}`;
   if (editor.value) {
-    editor.value.commands.insertContent(syntax);
+    editor.value.commands.insertContent(label);
   }
-};
-
-const exportToPDF = async () => {
-  alert("PDF export functionality - would integrate html2canvas + jsPDF here");
 };
 
 // Initialize
 onMounted(() => {
-  // Any initialization if needed
-});
+  // Load content from localStorage if it exists
+  const savedContent = localStorage.getItem('editorContent')
+  if (savedContent && editor.value) {
+    editor.value.commands.setContent(savedContent)
+  }
+})
 
 onUnmounted(() => {
   editor.value?.destroy()
