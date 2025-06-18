@@ -68,7 +68,6 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../store/authStore'
-import { X as Close } from 'lucide-vue-next'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -101,10 +100,6 @@ const handleLogin = async (): Promise<void> => {
       email: '',
       password: ''
     }
-
-    setTimeout(() => {
-      router.push('/')
-    }, 1500)
 
   } catch (error) {
     console.log(error)
