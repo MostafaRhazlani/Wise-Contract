@@ -21,8 +21,9 @@ const router = createRouter({
             component: () => import('../views/HomeView.vue'),
             meta: {
                 requiresAuth: true,
+                role: [4],
                 showSidebar: true,
-                showHeader: true
+                showHeader: false
             }
         },
         {
@@ -40,9 +41,41 @@ const router = createRouter({
             component: () => import('../views/UnauthorizedView.vue'),
             meta: {
                 requiresAuth: true,
-                role: [4],
             }
         },
+        {
+            path: '/manager/dashboard',
+            name: 'ManagerDashboard',
+            component: () => import('../views/manager/DashboardView.vue'),
+            meta: {
+                requiresAuth: true,
+                role: [3],
+                showSidebar: true,
+                showHeader: true
+            }
+        },
+        {
+            path: '/manager/users',
+            name: 'ManagerUsers',
+            component: () => import('../views/manager/UsersView.vue'),
+            meta: {
+                requiresAuth: true,
+                role: [3],
+                showSidebar: true,
+                showHeader: true
+            }
+        },
+        {
+            path: '/manager/company',
+            name: 'ManagerCompany',
+            component: () => import('../views/manager/CompaniesView.vue'),
+            meta: {
+                requiresAuth: true,
+                role: [3],
+                showSidebar: true,
+                showHeader: true
+            }
+        }
     ]
 })
 
@@ -55,7 +88,7 @@ router.beforeEach(async (to, from, next) => {
             authStore.logout()
             return next({ name: 'Login' })
         }
-
+        
         try {
             const response = await axios.get('/me')
             const user = response.data.user
@@ -63,18 +96,25 @@ router.beforeEach(async (to, from, next) => {
             authStore.setUser(user)
             authStore.userRole = role
 
-            const requiredRoles = to.meta.role as string[] | undefined
-            if (requiredRoles && !requiredRoles.includes(role)) {
-                if (to.name !== 'Unauthorized') {
-                    return next({ name: 'Unauthorized' })
+            const requiredRoles = to.meta.role as number[] | undefined
+            if (requiredRoles && authStore.userRole !== null) {
+                // Check if user has required role
+                console.log(requiredRoles);
+                if (!requiredRoles.includes(authStore.userRole)) {
+                    
+                    // Only redirect to Unauthorized if not already there
+                    if (to.name !== 'Unauthorized') {
+                        return next({ name: 'Unauthorized' })
+                    }
                 }
             }
+            // If no roles required or role check passed, allow access
             return next()
-
         } catch (error) {
             authStore.logout()
             return next({ name: 'Login' })
         }
+
     } else {
         return next()
     }
