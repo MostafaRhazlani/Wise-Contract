@@ -61,7 +61,6 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from "vue";
-import axios from "axios";
 import UserProfileModal from "@/components/UserProfileModal.vue";
 import { useAuthStore } from "../store/authStore";
 import { useEditor, EditorContent } from '@tiptap/vue-3'
@@ -71,6 +70,7 @@ import Underline from '@tiptap/extension-underline'
 import Color from '@tiptap/extension-color'
 import TextStyle from '@tiptap/extension-text-style'
 import EditorToolbar from '@/components/EditorToolbar.vue'
+import { VariableNode } from '@/extensions/VariableNode'
 
 // Types
 interface DynamicVariable {
@@ -89,6 +89,11 @@ const editor = useEditor({
     Color,
     TextAlign.configure({
       types: ['heading', 'paragraph'],
+    }),
+    VariableNode.configure({
+      HTMLAttributes: {
+        class: 'variable-node',
+      },
     }),
   ],
   onUpdate: ({ editor }) => {
@@ -121,9 +126,8 @@ const userInitials = computed(() => {
 
 // Methods
 const insertVariable = (variableKey: string) => {
-  const label = `{{${variableKey}}}`;
   if (editor.value) {
-    editor.value.commands.insertContent(label);
+    editor.value.commands.setVariable(variableKey)
   }
 };
 
@@ -145,6 +149,15 @@ onUnmounted(() => {
 .ProseMirror {
   outline: none;
   min-height: 200px;
+}
+
+.variable-node {
+  background-color: #e2e8f0;
+  padding: 2px 4px;
+  border-radius: 4px;
+  color: #1e40af;
+  font-family: monospace;
+  user-select: none;
 }
 
 .ProseMirror p {
