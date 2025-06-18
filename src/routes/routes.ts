@@ -54,6 +54,17 @@ const router = createRouter({
                 showHeader: true
             }
         },
+        {
+            path: '/manager/users',
+            name: 'ManagerUsers',
+            component: () => import('../views/manager/UsersView.vue'),
+            meta: {
+                requiresAuth: true,
+                role: [3],
+                showSidebar: true,
+                showHeader: true
+            }
+        },
     ]
 })
 
