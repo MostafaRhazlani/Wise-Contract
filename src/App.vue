@@ -1,5 +1,7 @@
 <template>
   <div id="app" class="min-h-screen bg-slate-100">
+    <!-- Header -->
+    <HeaderView v-if="route.meta.showHeader" :sidebarExpanded="sidebarExpanded" />
     <!-- Sidebar -->
     <SidebarView v-if="route.meta.showSidebar" v-model:sidebarExpanded="sidebarExpanded" />
     <!-- Main Content -->
@@ -13,6 +15,7 @@
 import { ref } from 'vue'
 import { useRoute } from 'vue-router';
 import SidebarView from '@/views/layouts/SidebarView.vue'
+import HeaderView from '@/views/layouts/HeaderView.vue'
 
 const sidebarExpanded = ref(false)
 const route = useRoute();
