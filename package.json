@@ -10,7 +10,9 @@
     "type-check": "vue-tsc --noEmit"
   },
   "dependencies": {
+    "@tiptap/extension-color": "^2.14.0",
     "@tiptap/extension-text-align": "^2.14.0",
+    "@tiptap/extension-text-style": "^2.14.0",
     "@tiptap/extension-underline": "^2.14.0",
     "@tiptap/pm": "^2.14.0",
     "@tiptap/starter-kit": "^2.14.0",
