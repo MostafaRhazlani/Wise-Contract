@@ -1,61 +1,71 @@
+// extensions/Variable.ts
 import { Node, mergeAttributes } from '@tiptap/core'
-import { Plugin, PluginKey } from '@tiptap/pm/state'
+import Suggestion from '@tiptap/suggestion'
 
-export interface VariableOptions {
-  HTMLAttributes: Record<string, any>
-}
-
+// Add this block for TypeScript augmentation
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
     variable: {
-      setVariable: (variable: string) => ReturnType
+      insertVariable: (variable: string) => ReturnType
     }
   }
 }
 
-export const VariableNode = Node.create<VariableOptions>({
+// Types
+interface VariableList {
+  key: string;
+  label: string;
+  display: string;
+}
+
+const variableList: VariableList[] = [
+  { key: "sender", label: "sender.name", display: "Sender name" },
+  { key: "receiver", label: "receiver.name", display: "Receiver name" },
+  { key: "sender_email", label: "sender.email", display: "Sender email"},
+  { key: "receiver_email", label: "receiver.email", display: "Receiver email"},
+  { key: "phone", label: "phone", display: "Phone"},
+  { key: "department", label: "department.department_name", display: "Department"},
+  { key: "company_name", label: "company_name", display: "Company Name" },
+  { key: "current_date", label: "current_date", display: "Current date" },
+];
+
+export const Variable = Node.create({
   name: 'variable',
-
-  group: 'inline',
-
   inline: true,
-
-  atom: true,
+  group: 'inline',
+  marks: '_',
 
   addAttributes() {
     return {
-      variable: {
-        default: null,
-        parseHTML: element => element.getAttribute('data-variable'),
-        renderHTML: attributes => {
-          return {
-            'data-variable': attributes.variable,
-          }
-        },
-      },
+      variable: { default: null },
+      label: { default: null },
     }
   },
 
   parseHTML() {
-    return [
-      {
-        tag: 'span[data-variable]',
-      },
-    ]
+    return [{ tag: 'span[data-variable]' }]
   },
 
-  renderHTML({ HTMLAttributes, node }) {
-    return ['span', mergeAttributes(this.options.HTMLAttributes, HTMLAttributes), `{{${node.attrs.variable}}}`]
+  renderHTML({ node, HTMLAttributes }) {
+    return [
+      'span',
+      mergeAttributes(HTMLAttributes, {
+        'data-variable': node.attrs.variable,
+        class: 'variable-node',
+      }),
+      `{{${node.attrs.label || node.attrs.variable}}}`
+    ]
   },
 
   addCommands() {
     return {
-      setVariable:
-        variable =>
+      insertVariable:
+        (variableKey) =>
         ({ commands }) => {
+          const variable = variableList.find(v => v.key === variableKey)
           return commands.insertContent({
             type: this.name,
-            attrs: { variable },
+            attrs: { variable: variable?.key || variableKey, label: variable?.label || variableKey },
           })
         },
     }
@@ -63,44 +73,53 @@ export const VariableNode = Node.create<VariableOptions>({
 
   addProseMirrorPlugins() {
     return [
-      new Plugin({
-        key: new PluginKey('variable'),
-        props: {
-          handleKeyDown: (view, event) => {
-            if (event.key === 'Backspace' || event.key === 'Delete') {
-              const { state, dispatch } = view
-              const { selection } = state
-              const { $from, $to } = selection
-
-              // Check if we're deleting a variable
-              const text = $from.parent.textContent
-              const variableRegex = /\{\{[^}]+\}\}/g
-              let match
-              let found = false
-
-              while ((match = variableRegex.exec(text)) !== null) {
-                const start = match.index
-                const end = start + match[0].length
-
-                if (
-                  ($from.pos - $from.start() >= start && $from.pos - $from.start() <= end) ||
-                  ($to.pos - $to.start() >= start && $to.pos - $to.start() <= end)
-                ) {
-                  // Delete the entire variable
-                  const tr = state.tr
-                  tr.delete($from.start() + start, $from.start() + end)
-                  dispatch(tr)
-                  found = true
-                  break
+      Suggestion({
+        editor: this.editor,
+        char: '{{',
+        startOfLine: false,
+        command: ({ editor, range, props }) => {
+          editor.chain().focus().deleteRange(range).insertVariable(props.label).run()
+        },
+        items: ({ query }) => {
+          return variableList
+            .filter(item => item.label.toLowerCase().includes(query.toLowerCase()) || item.key.toLowerCase().includes(query.toLowerCase()))
+        },
+        render: () => {
+          let popup: any
+          return {
+            onStart: props => {
+              const el = document.createElement('div')
+              el.className = 'bg-white border border-gray-200 text-sm rounded shadow p-2'
+              el.innerHTML = props.items
+                .map(item => `<div class=\"p-1 hover:bg-gray-100 cursor-pointer\">${item.display}</div>`)
+                .join('')
+              el.querySelectorAll('div').forEach((div: any, index: number) => {
+                div.onclick = () => props.command(props.items[index])
+              })
+              import('tippy.js').then(({ default: tippy }) => {
+                if (props.clientRect) {
+                  const safeClientRect = () => props.clientRect && props.clientRect() ? props.clientRect()! : new DOMRect();
+                  popup = tippy(document.body, {
+                    content: el,
+                    trigger: 'manual',
+                    placement: 'bottom-start',
+                    getReferenceClientRect: safeClientRect,
+                    showOnCreate: true,
+                    interactive: true,
+                    appendTo: () => document.body
+                  })
                 }
+              })
+            },
+            onExit() {
+              if (popup) {
+                popup.destroy();
+                popup = null;
               }
-
-              return found
-            }
-            return false
-          },
+            },
+          }
         },
       }),
     ]
   },
-}) 
+})
