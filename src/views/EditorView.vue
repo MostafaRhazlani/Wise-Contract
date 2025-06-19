@@ -43,7 +43,7 @@
           <div class="mt-6">
             <h4 class="font-semibold text-gray-800 mb-3">Available Variables</h4>
             <div class="space-y-2">
-              <div v-for="variable in dynamicVariables" :key="variable.key" @click="insertVariable(variable.key)"
+              <div v-for="variable in dynamicVariables" :key="variable.key" @click="insertVariable(variable.label)"
                 class="p-2 bg-gray-100 rounded cursor-pointer hover:bg-gray-200 text-sm transition-colors border border-transparent hover:border-gray-300">
                 <div class="flex items-center justify-between">
                   <div>
@@ -70,7 +70,7 @@ import Underline from '@tiptap/extension-underline'
 import Color from '@tiptap/extension-color'
 import TextStyle from '@tiptap/extension-text-style'
 import EditorToolbar from '@/components/EditorToolbar.vue'
-import { VariableNode } from '@/extensions/VariableNode'
+import { Variable } from '@/extensions/VariableNode'
 
 // Types
 interface DynamicVariable {
@@ -90,12 +90,14 @@ const editor = useEditor({
     TextAlign.configure({
       types: ['heading', 'paragraph'],
     }),
-    VariableNode.configure({
+    Variable.configure({
       HTMLAttributes: {
         class: 'variable-node',
       },
     }),
   ],
+
+
   onUpdate: ({ editor }) => {
     // Save content to localStorage whenever it changes
     localStorage.setItem('editorContent', editor.getHTML())
@@ -107,11 +109,14 @@ const authStore = useAuthStore();
 
 // Data
 const dynamicVariables = ref<DynamicVariable[]>([
-  { key: "full_name", label: "{{full_name}}", display: "Full name" },
-  { key: "phone", label: "{{email}}", display: "Email"},
-  { key: "email", label: "{{phone}}", display: "Phone"},
-  { key: "department", label: "{department.department_name}", display: "Department"},
-  { key: "company_name", label: "{{company_name}}", display: "Company Name" },
+  { key: "sender", label: "sender.name", display: "Sender name" },
+  { key: "receiver", label: "receiver.name", display: "Receiver name" },
+  { key: "sender_email", label: "sender.email", display: "Sender email"},
+  { key: "receiver_email", label: "receiver.email", display: "Receiver email"},
+  { key: "phone", label: "phone", display: "Phone"},
+  { key: "department", label: "department.department_name", display: "Department"},
+  { key: "company_name", label: "company_name", display: "Company Name" },
+  { key: "current_date", label: "current_date", display: "Current date" },
 ]);
 
 // Computed
@@ -127,12 +132,12 @@ const userInitials = computed(() => {
 // Methods
 const insertVariable = (variableKey: string) => {
   if (editor.value) {
-    editor.value.commands.setVariable(variableKey)
+    editor.value.commands.insertVariable(variableKey)
   }
 };
 
 // Initialize
-onMounted(() => {
+onMounted(async () => {
   // Load content from localStorage if it exists
   const savedContent = localStorage.getItem('editorContent')
   if (savedContent && editor.value) {
@@ -152,12 +157,11 @@ onUnmounted(() => {
 }
 
 .variable-node {
-  background-color: #e2e8f0;
+  background-color: oklch(96.2% 0.044 156.743);
   padding: 2px 4px;
   border-radius: 4px;
-  color: #1e40af;
+  color: oklch(72.3% 0.219 149.579);
   font-family: monospace;
-  user-select: none;
 }
 
 .ProseMirror p {
