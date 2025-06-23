@@ -1,18 +1,29 @@
 <template>
   <div class="bg-slate-100">
     <!-- Header with navigation -->
-    <div class="bg-green-400 p-2 flex justify-end items-center">
-      <!-- User Profile Section -->
-      <div class="relative">
-        <button @click="userModalOpen = !userModalOpen"
-          class="flex items-center space-x-2 rounded-lg transition-colors">
-          <div
-            class="w-10 h-10 bg-gradient-to-br from-red-400 to-red-600 rounded-full flex items-center justify-center">
-            <span class="text-white text-sm font-semibold">{{ userInitials }}</span>
-          </div>
+    <div class="bg-green-400 p-2 flex justify-between items-center">
+      <div class="flex items-center gap-2">
+        <div class="w-10 h-10 rounded-full overflow-hidden">
+          <img class="object-cover w-full h-full" :src="companyStore.company?.company_logo" alt="" />
+        </div>
+        <h1 class="font-semibold text-white text-lg">{{ companyStore.company?.company_name }}</h1>
+      </div>
+      <div class="flex items-center space-x-4">
+        <!-- Download Button -->
+        <button title="donwload template" @click="saveEditorContent" class="ml-4 p-2 text-white rounded hover:bg-green-500 transition">
+          <Download />
         </button>
-
-        <UserProfileModal v-model:show="userModalOpen" position="top" />
+        <!-- User Profile Section -->
+        <div class="relative">
+          <button @click="userModalOpen = !userModalOpen"
+            class="flex items-center space-x-2 rounded-lg transition-colors">
+            <div
+              class="w-10 h-10 bg-gradient-to-br from-red-400 to-red-600 rounded-full flex items-center justify-center">
+              <span class="text-white text-sm font-semibold">{{ userInitials }}</span>
+            </div>
+          </button>
+          <UserProfileModal v-model:show="userModalOpen" position="top" />
+        </div>
       </div>
     </div>
 
@@ -41,17 +52,7 @@
         <div class="p-4 overflow-y-auto flex-1">
           <!-- Dynamic Variables -->
           <div class="mt-6">
-            <h4 class="font-semibold text-gray-800 mb-3">Available Variables</h4>
-            <div class="space-y-2">
-              <div v-for="variable in dynamicVariables" :key="variable.key" @click="insertVariable(variable.key)"
-                class="p-2 bg-gray-100 rounded cursor-pointer hover:bg-gray-200 text-sm transition-colors border border-transparent hover:border-gray-300">
-                <div class="flex items-center justify-between">
-                  <div>
-                    <span class="text-gray-900">{{ variable.display }}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <VariablesList @select="insertVariable" />
           </div>
         </div>
       </div>
@@ -63,58 +64,26 @@
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import UserProfileModal from "@/components/UserProfileModal.vue";
 import { useAuthStore } from "../store/authStore";
-import { useEditor, EditorContent } from '@tiptap/vue-3'
-import StarterKit from '@tiptap/starter-kit'
-import TextAlign from '@tiptap/extension-text-align'
-import Underline from '@tiptap/extension-underline'
-import Color from '@tiptap/extension-color'
-import TextStyle from '@tiptap/extension-text-style'
-import EditorToolbar from '@/components/EditorToolbar.vue'
-import { VariableNode } from '@/extensions/VariableNode'
-
-// Types
-interface DynamicVariable {
-  key: string;
-  label: string;
-  display: string;
-}
-
-// Reactive state
-const editor = useEditor({
-  content: localStorage.getItem('editorContent') || '',
-  extensions: [
-    StarterKit,
-    Underline,
-    TextStyle,
-    Color,
-    TextAlign.configure({
-      types: ['heading', 'paragraph'],
-    }),
-    VariableNode.configure({
-      HTMLAttributes: {
-        class: 'variable-node',
-      },
-    }),
-  ],
-  onUpdate: ({ editor }) => {
-    // Save content to localStorage whenever it changes
-    localStorage.setItem('editorContent', editor.getHTML())
-  }
-})
+import { useEditor, EditorContent } from "@tiptap/vue-3";
+import StarterKit from "@tiptap/starter-kit";
+import TextAlign from "@tiptap/extension-text-align";
+import Underline from "@tiptap/extension-underline";
+import Color from "@tiptap/extension-color";
+import TextStyle from "@tiptap/extension-text-style";
+import EditorToolbar from "@/components/EditorToolbar.vue";
+import { Variable } from "@/extensions/VariableNode";
+import VariablesList from "@/components/VariablesList.vue";
+import { useVariablesStore } from "@/store/variablesStore";
+import { useCompanyStore } from "@/store/companyStore";
+import { Download } from "lucide-vue-next";
+import axios from "axios";
 
 const userModalOpen = ref<boolean>(false);
 const authStore = useAuthStore();
+const variablesStore = useVariablesStore();
+const companyStore = useCompanyStore();
 
-// Data
-const dynamicVariables = ref<DynamicVariable[]>([
-  { key: "full_name", label: "{{full_name}}", display: "Full name" },
-  { key: "phone", label: "{{email}}", display: "Email"},
-  { key: "email", label: "{{phone}}", display: "Phone"},
-  { key: "department", label: "{department.department_name}", display: "Department"},
-  { key: "company_name", label: "{{company_name}}", display: "Company Name" },
-]);
-
-// Computed
+// Split name user to get first characters
 const userInitials = computed(() => {
   const name = authStore.user?.name || "";
   return name
@@ -124,25 +93,72 @@ const userInitials = computed(() => {
     .toUpperCase();
 });
 
-// Methods
-const insertVariable = (variableKey: string) => {
+// Reactive state
+const editor = useEditor({
+  content: "",
+  extensions: [
+    StarterKit,
+    Underline,
+    TextStyle,
+    Color,
+    TextAlign.configure({
+      types: ["heading", "paragraph"],
+    }),
+    Variable.configure({
+      HTMLAttributes: {
+        class: "variable-node",
+      },
+      getVariables: () => variablesStore.variables,
+    }),
+  ],
+  onUpdate: ({ editor }) => {
+    // Save content to localStorage whenever it changes
+    localStorage.setItem("editorContent", editor.getHTML());
+  },
+});
+
+const insertVariable = (variable: { key: string; label: string }) => {
   if (editor.value) {
-    editor.value.commands.setVariable(variableKey)
+    editor.value.commands.insertVariable({
+      key: variable.key,
+      label: variable.label,
+    });
   }
 };
 
-// Initialize
-onMounted(() => {
-  // Load content from localStorage if it exists
-  const savedContent = localStorage.getItem('editorContent')
-  if (savedContent && editor.value) {
-    editor.value.commands.setContent(savedContent)
+const saveEditorContent = async () => {
+  const jsonContent: any = editor.value?.getJSON();
+  if (!jsonContent || !companyStore.company?.id) return;
+  try {
+    const response = await axios.post("/template/save", {
+      content_json: jsonContent,
+      company_id: companyStore.company?.id
+    });
+    
+    if(response.status === 200) {
+      console.log(response);
+      console.log('Content saved successfully');
+    }
+  } catch (error: any) {
+    alert("Error saving content: " + (error.response?.data?.message || error.message));
   }
-})
+};
+
+onMounted(() => {
+  if (variablesStore.variables.length === 0) {
+    variablesStore.fetchVariables();
+  }
+  const savedContent = localStorage.getItem("editorContent");
+  if (savedContent && editor.value) {
+    editor.value.commands.setContent(savedContent);
+  }
+  companyStore.getCompany();
+  
+});
 
 onUnmounted(() => {
-  editor.value?.destroy()
-})
+  editor.value?.destroy();
+});
 </script>
 
 <style>
@@ -152,12 +168,11 @@ onUnmounted(() => {
 }
 
 .variable-node {
-  background-color: #e2e8f0;
+  background-color: oklch(96.2% 0.044 156.743);
   padding: 2px 4px;
   border-radius: 4px;
-  color: #1e40af;
+  color: oklch(72.3% 0.219 149.579);
   font-family: monospace;
-  user-select: none;
 }
 
 .ProseMirror p {

@@ -99,7 +99,6 @@ router.beforeEach(async (to, from, next) => {
             const requiredRoles = to.meta.role as number[] | undefined
             if (requiredRoles && authStore.userRole !== null) {
                 // Check if user has required role
-                console.log(requiredRoles);
                 if (!requiredRoles.includes(authStore.userRole)) {
                     
                     // Only redirect to Unauthorized if not already there
