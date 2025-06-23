@@ -1,0 +1,30 @@
+import { defineStore } from 'pinia';
+import { ref } from 'vue';
+import axios from 'axios';
+
+export const useCompanyStore = defineStore('company', () => {
+
+    interface Company {
+        id: number;
+        company_name: string;
+        company_logo: string;
+    }
+  const company = ref<Company | null>(null);
+  const loading = ref(false);
+  const error = ref<string | null>(null);
+
+  const getCompany = async () => {
+    loading.value = true;
+    error.value = null;
+    try {
+      const response = await axios.get('/company/show');
+      company.value = response.data.company;
+    } catch (err: any) {
+      error.value = err.message || 'Failed to fetch company info';
+    } finally {
+      loading.value = false;
+    }
+  };
+
+  return { company, loading, error, getCompany };
+}); 
