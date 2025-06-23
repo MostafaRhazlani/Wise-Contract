@@ -41,17 +41,7 @@
         <div class="p-4 overflow-y-auto flex-1">
           <!-- Dynamic Variables -->
           <div class="mt-6">
-            <h4 class="font-semibold text-gray-800 mb-3">Available Variables</h4>
-            <div class="space-y-2">
-              <div v-for="variable in dynamicVariables" :key="variable.key" @click="insertVariable(variable.label)"
-                class="p-2 bg-gray-100 rounded cursor-pointer hover:bg-gray-200 text-sm transition-colors border border-transparent hover:border-gray-300">
-                <div class="flex items-center justify-between">
-                  <div>
-                    <span class="text-gray-900">{{ variable.display }}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <VariablesList @select="insertVariable" />
           </div>
         </div>
       </div>
@@ -71,17 +61,26 @@ import Color from '@tiptap/extension-color'
 import TextStyle from '@tiptap/extension-text-style'
 import EditorToolbar from '@/components/EditorToolbar.vue'
 import { Variable } from '@/extensions/VariableNode'
+import VariablesList from '@/components/VariablesList.vue'
+import { useVariablesStore } from '@/store/variablesStore'
 
-// Types
-interface DynamicVariable {
-  key: string;
-  label: string;
-  display: string;
-}
+const userModalOpen = ref<boolean>(false);
+const authStore = useAuthStore();
+const variablesStore = useVariablesStore();
+
+// Split name user to get first characters
+const userInitials = computed(() => {
+  const name = authStore.user?.name || "";
+  return name
+    .split(" ")
+    .map((n) => n.charAt(0))
+    .join("")
+    .toUpperCase();
+});
 
 // Reactive state
 const editor = useEditor({
-  content: localStorage.getItem('editorContent') || '',
+  content: '',
   extensions: [
     StarterKit,
     Underline,
@@ -94,51 +93,25 @@ const editor = useEditor({
       HTMLAttributes: {
         class: 'variable-node',
       },
+      getVariables: () => variablesStore.variables,
     }),
   ],
-
-
   onUpdate: ({ editor }) => {
     // Save content to localStorage whenever it changes
     localStorage.setItem('editorContent', editor.getHTML())
   }
 })
 
-const userModalOpen = ref<boolean>(false);
-const authStore = useAuthStore();
-
-// Data
-const dynamicVariables = ref<DynamicVariable[]>([
-  { key: "sender", label: "sender.name", display: "Sender name" },
-  { key: "receiver", label: "receiver.name", display: "Receiver name" },
-  { key: "sender_email", label: "sender.email", display: "Sender email"},
-  { key: "receiver_email", label: "receiver.email", display: "Receiver email"},
-  { key: "phone", label: "phone", display: "Phone"},
-  { key: "department", label: "department.department_name", display: "Department"},
-  { key: "company_name", label: "company_name", display: "Company Name" },
-  { key: "current_date", label: "current_date", display: "Current date" },
-]);
-
-// Computed
-const userInitials = computed(() => {
-  const name = authStore.user?.name || "";
-  return name
-    .split(" ")
-    .map((n) => n.charAt(0))
-    .join("")
-    .toUpperCase();
-});
-
-// Methods
 const insertVariable = (variableKey: string) => {
   if (editor.value) {
-    editor.value.commands.insertVariable(variableKey)
+    editor.value.commands.insertVariable(variableKey);
   }
 };
 
-// Initialize
-onMounted(async () => {
-  // Load content from localStorage if it exists
+onMounted(() => {
+  if (variablesStore.variables.length === 0) {
+    variablesStore.fetchVariables();
+  }
   const savedContent = localStorage.getItem('editorContent')
   if (savedContent && editor.value) {
     editor.value.commands.setContent(savedContent)

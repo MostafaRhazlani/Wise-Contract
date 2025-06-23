@@ -15,25 +15,19 @@ declare module '@tiptap/core' {
 interface VariableList {
   key: string;
   label: string;
-  display: string;
 }
-
-const variableList: VariableList[] = [
-  { key: "sender", label: "sender.name", display: "Sender name" },
-  { key: "receiver", label: "receiver.name", display: "Receiver name" },
-  { key: "sender_email", label: "sender.email", display: "Sender email"},
-  { key: "receiver_email", label: "receiver.email", display: "Receiver email"},
-  { key: "phone", label: "phone", display: "Phone"},
-  { key: "department", label: "department.department_name", display: "Department"},
-  { key: "company_name", label: "company_name", display: "Company Name" },
-  { key: "current_date", label: "current_date", display: "Current date" },
-];
 
 export const Variable = Node.create({
   name: 'variable',
   inline: true,
   group: 'inline',
   marks: '_',
+
+  addOptions() {
+    return {
+      getVariables: () => [] as VariableList[],
+    }
+  },
 
   addAttributes() {
     return {
@@ -62,7 +56,7 @@ export const Variable = Node.create({
       insertVariable:
         (variableKey) =>
         ({ commands }) => {
-          const variable = variableList.find(v => v.key === variableKey)
+          const variable = this.options.getVariables().find((v: any) => v.key === variableKey)
           return commands.insertContent({
             type: this.name,
             attrs: { variable: variable?.key || variableKey, label: variable?.label || variableKey },
@@ -81,17 +75,17 @@ export const Variable = Node.create({
           editor.chain().focus().deleteRange(range).insertVariable(props.label).run()
         },
         items: ({ query }) => {
-          return variableList
-            .filter(item => item.label.toLowerCase().includes(query.toLowerCase()) || item.key.toLowerCase().includes(query.toLowerCase()))
+          return this.options.getVariables()
+            .filter((item: any) => item.label.toLowerCase().includes(query.toLowerCase()) || item.key.toLowerCase().includes(query.toLowerCase()))
         },
         render: () => {
           let popup: any
           return {
             onStart: props => {
               const el = document.createElement('div')
-              el.className = 'bg-white border border-gray-200 text-sm rounded shadow p-2'
+              el.className = 'bg-white border border-gray-200 text-sm rounded shadow p-2 w-44'
               el.innerHTML = props.items
-                .map(item => `<div class=\"p-1 hover:bg-gray-100 cursor-pointer\">${item.display}</div>`)
+                .map((item: any) => `<div class=\"p-1 hover:bg-gray-100 cursor-pointer font-semibold \">${item.key}</div>`)
                 .join('')
               el.querySelectorAll('div').forEach((div: any, index: number) => {
                 div.onclick = () => props.command(props.items[index])
