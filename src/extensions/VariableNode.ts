@@ -6,7 +6,7 @@ import Suggestion from '@tiptap/suggestion'
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
     variable: {
-      insertVariable: (variable: string) => ReturnType
+      insertVariable: (variable: { key: string; label: string }) => ReturnType
     }
   }
 }
@@ -31,37 +31,51 @@ export const Variable = Node.create({
 
   addAttributes() {
     return {
-      variable: { default: null },
+      key: { default: null },
       label: { default: null },
     }
   },
 
   parseHTML() {
-    return [{ tag: 'span[data-variable]' }]
+    return [
+      {
+        tag: 'span[data-variable]',
+        getAttrs: dom => {
+          const el = dom as HTMLElement
+          return {
+            key: el.getAttribute('data-variable'),
+            label: el.getAttribute('data-label'),
+          }
+        }
+      }
+    ]
   },
+
 
   renderHTML({ node, HTMLAttributes }) {
     return [
       'span',
       mergeAttributes(HTMLAttributes, {
-        'data-variable': node.attrs.variable,
         class: 'variable-node',
       }),
-      `{{${node.attrs.label || node.attrs.variable}}}`
+      `{{${node.attrs.key}}}`,
     ]
   },
 
   addCommands() {
     return {
       insertVariable:
-        (variableKey) =>
-        ({ commands }) => {
-          const variable = this.options.getVariables().find((v: any) => v.key === variableKey)
-          return commands.insertContent({
-            type: this.name,
-            attrs: { variable: variable?.key || variableKey, label: variable?.label || variableKey },
-          })
-        },
+        (variable: { key: string, label: string }) =>
+          ({ commands }) => {
+            return commands.insertContent({
+              type: this.name,
+              attrs: {
+                key: variable.key,   
+                label: variable.label,
+              },
+            });
+          },
+
     }
   },
 
@@ -72,7 +86,7 @@ export const Variable = Node.create({
         char: '{{',
         startOfLine: false,
         command: ({ editor, range, props }) => {
-          editor.chain().focus().deleteRange(range).insertVariable(props.label).run()
+          editor.chain().focus().deleteRange(range).insertVariable(props).run()
         },
         items: ({ query }) => {
           return this.options.getVariables()

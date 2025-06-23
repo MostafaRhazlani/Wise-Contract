@@ -7,7 +7,7 @@
         <div
             v-for="variable in variablesStore.variables"
             :key="variable.key"
-            @click="$emit('select', variable.label)"
+            @click="$emit('select', variable)"
             class="px-2 py-1 text-center bg-green-100 rounded-md cursor-pointer hover:bg-green-200 text-sm transition-colors border border-transparent hover:border-green-300">
             <div class="">
                 <div>

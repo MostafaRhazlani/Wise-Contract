@@ -1,18 +1,29 @@
 <template>
   <div class="bg-slate-100">
     <!-- Header with navigation -->
-    <div class="bg-green-400 p-2 flex justify-end items-center">
-      <!-- User Profile Section -->
-      <div class="relative">
-        <button @click="userModalOpen = !userModalOpen"
-          class="flex items-center space-x-2 rounded-lg transition-colors">
-          <div
-            class="w-10 h-10 bg-gradient-to-br from-red-400 to-red-600 rounded-full flex items-center justify-center">
-            <span class="text-white text-sm font-semibold">{{ userInitials }}</span>
-          </div>
+    <div class="bg-green-400 p-2 flex justify-between items-center">
+      <div class="flex items-center gap-2">
+        <div class="w-10 h-10 rounded-full overflow-hidden">
+          <img class="object-cover w-full h-full" :src="companyStore.company?.company_logo" alt="" />
+        </div>
+        <h1 class="font-semibold text-white text-lg">{{ companyStore.company?.company_name }}</h1>
+      </div>
+      <div class="flex items-center space-x-4">
+        <!-- Download Button -->
+        <button title="donwload template" @click="saveEditorContent" class="ml-4 p-2 text-white rounded hover:bg-green-500 transition">
+          <Download />
         </button>
-
-        <UserProfileModal v-model:show="userModalOpen" position="top" />
+        <!-- User Profile Section -->
+        <div class="relative">
+          <button @click="userModalOpen = !userModalOpen"
+            class="flex items-center space-x-2 rounded-lg transition-colors">
+            <div
+              class="w-10 h-10 bg-gradient-to-br from-red-400 to-red-600 rounded-full flex items-center justify-center">
+              <span class="text-white text-sm font-semibold">{{ userInitials }}</span>
+            </div>
+          </button>
+          <UserProfileModal v-model:show="userModalOpen" position="top" />
+        </div>
       </div>
     </div>
 
@@ -53,20 +64,24 @@
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import UserProfileModal from "@/components/UserProfileModal.vue";
 import { useAuthStore } from "../store/authStore";
-import { useEditor, EditorContent } from '@tiptap/vue-3'
-import StarterKit from '@tiptap/starter-kit'
-import TextAlign from '@tiptap/extension-text-align'
-import Underline from '@tiptap/extension-underline'
-import Color from '@tiptap/extension-color'
-import TextStyle from '@tiptap/extension-text-style'
-import EditorToolbar from '@/components/EditorToolbar.vue'
-import { Variable } from '@/extensions/VariableNode'
-import VariablesList from '@/components/VariablesList.vue'
-import { useVariablesStore } from '@/store/variablesStore'
+import { useEditor, EditorContent } from "@tiptap/vue-3";
+import StarterKit from "@tiptap/starter-kit";
+import TextAlign from "@tiptap/extension-text-align";
+import Underline from "@tiptap/extension-underline";
+import Color from "@tiptap/extension-color";
+import TextStyle from "@tiptap/extension-text-style";
+import EditorToolbar from "@/components/EditorToolbar.vue";
+import { Variable } from "@/extensions/VariableNode";
+import VariablesList from "@/components/VariablesList.vue";
+import { useVariablesStore } from "@/store/variablesStore";
+import { useCompanyStore } from "@/store/companyStore";
+import { Download } from "lucide-vue-next";
+import axios from "axios";
 
 const userModalOpen = ref<boolean>(false);
 const authStore = useAuthStore();
 const variablesStore = useVariablesStore();
+const companyStore = useCompanyStore();
 
 // Split name user to get first characters
 const userInitials = computed(() => {
@@ -80,31 +95,52 @@ const userInitials = computed(() => {
 
 // Reactive state
 const editor = useEditor({
-  content: '',
+  content: "",
   extensions: [
     StarterKit,
     Underline,
     TextStyle,
     Color,
     TextAlign.configure({
-      types: ['heading', 'paragraph'],
+      types: ["heading", "paragraph"],
     }),
     Variable.configure({
       HTMLAttributes: {
-        class: 'variable-node',
+        class: "variable-node",
       },
       getVariables: () => variablesStore.variables,
     }),
   ],
   onUpdate: ({ editor }) => {
     // Save content to localStorage whenever it changes
-    localStorage.setItem('editorContent', editor.getHTML())
-  }
-})
+    localStorage.setItem("editorContent", editor.getHTML());
+  },
+});
 
-const insertVariable = (variableKey: string) => {
+const insertVariable = (variable: { key: string; label: string }) => {
   if (editor.value) {
-    editor.value.commands.insertVariable(variableKey);
+    editor.value.commands.insertVariable({
+      key: variable.key,
+      label: variable.label,
+    });
+  }
+};
+
+const saveEditorContent = async () => {
+  const jsonContent: any = editor.value?.getJSON();
+  if (!jsonContent || !companyStore.company?.id) return;
+  try {
+    const response = await axios.post("/template/save", {
+      content_json: jsonContent,
+      company_id: companyStore.company?.id
+    });
+    
+    if(response.status === 200) {
+      console.log(response);
+      console.log('Content saved successfully');
+    }
+  } catch (error: any) {
+    alert("Error saving content: " + (error.response?.data?.message || error.message));
   }
 };
 
@@ -112,15 +148,17 @@ onMounted(() => {
   if (variablesStore.variables.length === 0) {
     variablesStore.fetchVariables();
   }
-  const savedContent = localStorage.getItem('editorContent')
+  const savedContent = localStorage.getItem("editorContent");
   if (savedContent && editor.value) {
-    editor.value.commands.setContent(savedContent)
+    editor.value.commands.setContent(savedContent);
   }
-})
+  companyStore.getCompany();
+  
+});
 
 onUnmounted(() => {
-  editor.value?.destroy()
-})
+  editor.value?.destroy();
+});
 </script>
 
 <style>
