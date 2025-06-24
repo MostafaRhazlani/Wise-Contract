@@ -1,7 +1,11 @@
 <template>
   <div>
     <h4 class="font-semibold text-gray-800 mb-3">Available Variables</h4>
-    <div v-if="variablesStore.loading" class="text-gray-500 text-sm">Loading...</div>
+    <div v-if="variablesStore.loading" class="text-gray-500 text-sm grid grid-cols-2 gap-2">
+      <div v-for="n in 6" :key="n" class="animate-pulse">
+        <div class="h-7 bg-gray-200 rounded"></div>
+      </div>
+    </div>
     <div v-else-if="variablesStore.error" class="text-red-500 text-sm">{{ variablesStore.error }}</div>
     <div v-else class="grid grid-cols-2 gap-2">
         <div

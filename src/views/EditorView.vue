@@ -118,7 +118,7 @@ const editor = useEditor({
   ],
   onUpdate: ({ editor }) => {
     // Save content to localStorage whenever it changes
-    localStorage.setItem("editorContent", editor.getHTML());
+    localStorage.setItem("editorContent", JSON.stringify(editor.getJSON()));
   },
 });
 
@@ -139,7 +139,7 @@ const saveEditorContent = async () => {
   
   try {
     const jsonContent = editor.value.getJSON();
-    const canvas = await html2canvas(editorPageRef.value);
+    const canvas = await html2canvas(editorPageRef.value, { scale: 0.5 });
     const imageDataUrl = canvas.toDataURL("image/png");
     
     const fetchResponse = await fetch(imageDataUrl);
@@ -172,7 +172,16 @@ onMounted(() => {
   }
   const savedContent = localStorage.getItem("editorContent");
   if (savedContent && editor.value) {
-    editor.value.commands.setContent(savedContent);
+    try {
+      // parse as JSON
+      const json = JSON.parse(savedContent);
+      editor.value.commands.setContent(json);
+
+    } catch (error) {
+      // Fallback to HTML if not json
+      editor.value.commands.setContent(savedContent);
+      
+    }
   }
   companyStore.getCompany();
 });
