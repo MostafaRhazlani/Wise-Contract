@@ -28,9 +28,9 @@
     </div>
 
     <!-- Main Content Area -->
-    <div class="flex h-[calc(100vh-3.5rem)] overflow-hidden">
+    <div class="flex h-[calc(100vh-3.5rem)]">
       <!-- Center area -->
-      <div class="flex-1 overflow-hidden flex flex-col">
+      <div class="flex-1 overflow-hidden flex flex-col transition-all duration-300" :class="{ 'mr-80': activePanel }">
         <!-- Toolbar -->
         <EditorToolbar :editor="editor" />
 
@@ -50,16 +50,19 @@
         </div>
       </div>
 
-      <!-- Right Sidebar - Contract Data -->
-      <div class="w-80 bg-white border-l border-gray-300 overflow-hidden flex flex-col">
-        <div class="p-4 overflow-y-auto flex-1">
-          <!-- Dynamic Variables -->
-          <div class="mt-6">
-            <VariablesList @select="insertVariable" />
+      <!-- Right Sidebar Panel -->
+      <transition name="sidebar-slide" :class="{ 'mr-16': activePanel }">
+        <div v-if="activePanel" class="fixed top-14 right-0 bottom-0 w-80 bg-white border-l border-gray-200 shadow-lg z-20 flex flex-col">
+          <div class="p-4 overflow-y-auto flex-1">
+            <VariablesList v-if="activePanel === 'variables'" @select="insertVariable" />
+            <TemplatesList v-if="activePanel === 'templates'" />
           </div>
         </div>
-      </div>
+      </transition>
     </div>
+    
+    <!-- Floating Control Sidebar -->
+    <EditorControlSidebar @toggle-panel="togglePanel" />
   </div>
 </template>
 
@@ -76,17 +79,31 @@ import TextStyle from "@tiptap/extension-text-style";
 import EditorToolbar from "@/components/EditorToolbar.vue";
 import { Variable } from "@/extensions/VariableNode";
 import VariablesList from "@/components/VariablesList.vue";
+import TemplatesList from "@/components/TemplatesList.vue";
+import EditorControlSidebar from "@/components/EditorControlSidebar.vue";
 import { useVariablesStore } from "@/store/variablesStore";
 import { useCompanyStore } from "@/store/companyStore";
+import { useTemplateStore } from "@/store/templateStore";
 import { Download } from "lucide-vue-next";
 import axios from "axios";
 import html2canvas from "html2canvas";
 
 const editorPageRef = ref<HTMLElement | null>(null);
 const userModalOpen = ref<boolean>(false);
+const activePanel = ref<'variables' | 'templates' | null>(null);
+
 const authStore = useAuthStore();
 const variablesStore = useVariablesStore();
 const companyStore = useCompanyStore();
+const templateStore = useTemplateStore();
+
+const togglePanel = (panel: 'variables' | 'templates') => {
+  if (activePanel.value === panel) {
+    activePanel.value = null; // Close if it's already open
+  } else {
+    activePanel.value = panel; // Open the new panel
+  }
+};
 
 // Split name user to get first characters
 const userInitials = computed(() => {
@@ -198,10 +215,10 @@ onUnmounted(() => {
 }
 
 .variable-node {
-  background-color: oklch(96.2% 0.044 156.743);
+  background-color: #dcfce7;
   padding: 2px 4px;
   border-radius: 4px;
-  color: oklch(72.3% 0.219 149.579);
+  color: #00c951;
   font-family: monospace;
 }
 
@@ -253,5 +270,14 @@ onUnmounted(() => {
   border: none;
   border-top: 2px solid #ddd;
   margin: 2rem 0;
+}
+
+.sidebar-slide-enter-active,
+.sidebar-slide-leave-active {
+  transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+}
+.sidebar-slide-enter-from,
+.sidebar-slide-leave-to {
+  transform: translateX(100%);
 }
 </style>
