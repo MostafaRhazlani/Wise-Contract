@@ -55,12 +55,12 @@ const router = createRouter({
             }
         },
         {
-            path: '/manager/users',
-            name: 'ManagerUsers',
+            path: '/editor/users',
+            name: 'EditorUsers',
             component: () => import('../views/manager/UsersView.vue'),
             meta: {
                 requiresAuth: true,
-                role: [3],
+                role: [4],
                 showSidebar: true,
                 showHeader: true
             }

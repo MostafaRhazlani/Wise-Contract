@@ -55,6 +55,7 @@ const canAccessManagerDashboard = computed(() => {
 const sidebarItems = computed(() => [
   { name: "Home", icon: HomeIcon, route: "/" },
   { name: "Templates", icon: LayoutTemplateIcon, route: "/templates" },
+  { name: "Users", icon: Users, route: "/editor/users" },
 ].map(item => ({
   ...item,
   active: route.path === item.route
@@ -67,7 +68,6 @@ const managerDashboardItems = computed(() => {
   return [
     { name: "Overview", icon: LayoutDashboard, route: "/manager/dashboard" },
     { name: "Company", icon: Building2, route: "/manager/company" },
-    { name: "Users", icon: Users, route: "/manager/users" },
   ].map(item => ({
     ...item,
     active: route.path === item.route
