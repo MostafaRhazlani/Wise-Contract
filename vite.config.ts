@@ -6,7 +6,6 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 export default defineConfig({
   plugins: [
     vue(),
-    // register vueDevTools before createHtmlPlugin
     vueDevTools(),
   ],
   resolve: {
