@@ -39,7 +39,10 @@
           <div class="p-4 w-full">
             <div class="max-w-4xl mx-auto">
               <!-- A4 Paper -->
-              <div class="bg-white shadow-lg rounded-lg min-h-[297mm] max-w-[210mm] mx-auto p-16">
+              <div
+                ref="editorPageRef"
+                class="bg-white shadow-lg rounded-lg min-h-[297mm] max-w-[210mm] mx-auto p-16"
+              >
                 <EditorContent :editor="editor" class="prose max-w-none" />
               </div>
             </div>
@@ -77,7 +80,9 @@ import { useVariablesStore } from "@/store/variablesStore";
 import { useCompanyStore } from "@/store/companyStore";
 import { Download } from "lucide-vue-next";
 import axios from "axios";
+import html2canvas from "html2canvas";
 
+const editorPageRef = ref<HTMLElement | null>(null);
 const userModalOpen = ref<boolean>(false);
 const authStore = useAuthStore();
 const variablesStore = useVariablesStore();
@@ -127,20 +132,37 @@ const insertVariable = (variable: { key: string; label: string }) => {
 };
 
 const saveEditorContent = async () => {
-  const jsonContent: any = editor.value?.getJSON();
-  if (!jsonContent || !companyStore.company?.id) return;
+  if (!editorPageRef.value || !editor.value || !companyStore.company?.id) {
+    alert("Some required information is missing to save the content.");
+    return;
+  }
+  
   try {
-    const response = await axios.post("/template/save", {
-      content_json: jsonContent,
-      company_id: companyStore.company?.id
+    const jsonContent = editor.value.getJSON();
+    const canvas = await html2canvas(editorPageRef.value);
+    const imageDataUrl = canvas.toDataURL("image/png");
+    
+    const fetchResponse = await fetch(imageDataUrl);
+    const imageBlob = await fetchResponse.blob();
+    const imageFile = new File([imageBlob], "template_thumbnail.png", { type: "image/png" });
+
+    const formData = new FormData();
+    formData.append("content_json", JSON.stringify(jsonContent));
+    formData.append("company_id", String(companyStore.company.id));
+    formData.append("image", imageFile);
+
+    const response = await axios.post("/template/save", formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
     });
     
     if(response.status === 200) {
-      console.log(response);
-      console.log('Content saved successfully');
+      alert('Content saved successfully');
     }
   } catch (error: any) {
-    alert("Error saving content: " + (error.response?.data?.message || error.message));
+    const errorMessage = error.response?.data?.message || error.message;
+    console.log(errorMessage);
   }
 };
 
@@ -153,7 +175,6 @@ onMounted(() => {
     editor.value.commands.setContent(savedContent);
   }
   companyStore.getCompany();
-  
 });
 
 onUnmounted(() => {
