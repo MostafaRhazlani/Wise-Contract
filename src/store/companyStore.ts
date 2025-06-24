@@ -9,16 +9,21 @@ export const useCompanyStore = defineStore('company', () => {
         company_name: string;
         company_logo: string;
     }
-  const company = ref<Company | null>(null);
+  const company = ref<Company | null>(JSON.parse(localStorage.getItem('company') || 'null'));
   const loading = ref(false);
   const error = ref<string | null>(null);
+  
+  const setCompany = (companyData: Company) => {
+    company.value = companyData
+    localStorage.setItem('company', JSON.stringify(companyData))
+  }
 
   const getCompany = async () => {
     loading.value = true;
     error.value = null;
     try {
       const response = await axios.get('/company/show');
-      company.value = response.data.company;
+      setCompany(response.data.company);
     } catch (err: any) {
       error.value = err.message || 'Failed to fetch company info';
     } finally {
