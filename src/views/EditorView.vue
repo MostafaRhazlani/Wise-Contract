@@ -55,7 +55,7 @@
         <div v-if="activePanel" class="fixed top-14 right-0 bottom-0 w-80 bg-white border-l border-gray-200 shadow-lg z-20 flex flex-col">
           <div class="p-4 overflow-y-auto flex-1">
             <VariablesList v-if="activePanel === 'variables'" @select="insertVariable" />
-            <TemplatesList v-if="activePanel === 'templates'" />
+            <TemplatesList v-if="activePanel === 'templates'" @select-template="handleSelectTemplate" />
           </div>
         </div>
       </transition>
@@ -70,7 +70,6 @@
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import UserProfileModal from "@/components/UserProfileModal.vue";
 import { useAuthStore } from "../store/authStore";
-import { useEditor, EditorContent } from "@tiptap/vue-3";
 import StarterKit from "@tiptap/starter-kit";
 import TextAlign from "@tiptap/extension-text-align";
 import Underline from "@tiptap/extension-underline";
@@ -85,6 +84,7 @@ import { useVariablesStore } from "@/store/variablesStore";
 import { useCompanyStore } from "@/store/companyStore";
 import { useTemplateStore } from "@/store/templateStore";
 import { Download } from "lucide-vue-next";
+import { useEditor, EditorContent } from "@tiptap/vue-3";
 import axios from "axios";
 import html2canvas from "html2canvas";
 
@@ -99,9 +99,9 @@ const templateStore = useTemplateStore();
 
 const togglePanel = (panel: 'variables' | 'templates') => {
   if (activePanel.value === panel) {
-    activePanel.value = null; // Close if it's already open
+    activePanel.value = null;
   } else {
-    activePanel.value = panel; // Open the new panel
+    activePanel.value = panel;
   }
 };
 
@@ -138,6 +138,17 @@ const editor = useEditor({
     localStorage.setItem("editorContent", JSON.stringify(editor.getJSON()));
   },
 });
+
+const handleSelectTemplate = async (templateId: number) => {
+  const template = await templateStore.getTemplate(templateId);
+  const content_json = JSON.parse(template?.content_json);
+  
+  
+  if(editor.value) {
+    editor.value.commands.setContent(content_json);
+  }
+};
+
 
 const insertVariable = (variable: { key: string; label: string }) => {
   if (editor.value) {
@@ -188,6 +199,8 @@ onMounted(() => {
     variablesStore.fetchVariables();
   }
   const savedContent = localStorage.getItem("editorContent");
+  // console.log(savedContent);
+  
   if (savedContent && editor.value) {
     try {
       // parse as JSON

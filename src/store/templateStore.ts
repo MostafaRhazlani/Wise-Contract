@@ -44,5 +44,19 @@ export const useTemplateStore = defineStore('template', {
         this.loading = false;
       }
     },
+
+    async getTemplate(id: number): Promise<Template | null> {
+      this.loading = true;
+      this.error = null;
+      try {
+        const response = await axios.get(`/template/${id}`);
+        return response.data.template;
+      } catch (error: any) {
+        this.error = error.response?.data?.message || `Failed to fetch template ${id}.`;
+        return null;
+      } finally {
+        this.loading = false;
+      }
+    },
   },
 }); 

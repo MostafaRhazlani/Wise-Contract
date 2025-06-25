@@ -10,9 +10,9 @@
       {{ templateStore.error }}
     </div>
     <div v-else class="grid grid-cols-2 gap-2">
-      <div v-for="template in templateStore.templates" :key="template.id" class="cursor-pointer group">
-        <div class="w-full border border-gray-300">
-          <img :src="storageBaseUrl + template.image" alt="Template image" class="object-contain h-full w-full" />
+      <div v-for="template in templateStore.templates" :key="template.id" @click="$emit('select-template', template.id)" class="cursor-pointer group">
+        <div class="w-full bg-gray-100 rounded border overflow-hidden">
+          <img :src="storageBaseUrl + template.image" alt="Template image" class="object-contain h-full w-full group-hover:scale-105 transition-transform" />
         </div>
       </div>
     </div>
@@ -22,6 +22,8 @@
 <script setup lang="ts">
 import { onMounted } from 'vue';
 import { useTemplateStore } from '@/store/templateStore';
+
+defineEmits(['select-template']);
 
 const templateStore = useTemplateStore();
 const storageBaseUrl = import.meta.env.VITE_STORAGE_BASE_URL
