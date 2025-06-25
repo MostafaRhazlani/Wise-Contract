@@ -28,35 +28,43 @@
     </div>
 
     <!-- Main Content Area -->
-    <div class="flex h-[calc(100vh-3.5rem)] overflow-hidden">
+    <div class="flex">
       <!-- Center area -->
-      <div class="flex-1 overflow-hidden flex flex-col">
+      <div class="flex-1 flex flex-col transition-all duration-300">
         <!-- Toolbar -->
         <EditorToolbar :editor="editor" />
 
-        <!-- Editor Area -->
-        <div class="flex-1 overflow-y-auto">
-          <div class="p-4 w-full">
-            <div class="max-w-4xl mx-auto">
-              <!-- A4 Paper -->
-              <div class="bg-white shadow-lg rounded-lg min-h-[297mm] max-w-[210mm] mx-auto p-16">
-                <EditorContent :editor="editor" class="prose max-w-none" />
+        <div class="flex h-[calc(100vh-7.5rem)]">
+          <!-- Floating Control Sidebar -->
+          <EditorControlSidebar @toggle-panel="togglePanel" />
+          <!-- Right Sidebar Panel -->
+          <transition name="fade">
+            <div v-if="activePanel" class="mt-2 rounded-lg w-80 bg-white shadow-lg flex flex-col">
+              <div class="p-4 overflow-y-auto flex-1">
+                <VariablesList v-if="activePanel === 'variables'" @select="insertVariable" />
+                <TemplatesList v-if="activePanel === 'templates'" @select-template="handleSelectTemplate" />
+              </div>
+            </div>
+          </transition>
+
+          <!-- Editor Area -->
+          <div class="flex-1 overflow-y-auto pt-20">
+            <div class="w-full">
+              <div class="max-w-4xl mx-auto">
+                <!-- A4 Paper -->
+                <div
+                  ref="editorPageRef"
+                  class="bg-white shadow-lg min-h-[297mm] max-w-[210mm] mx-auto p-16"
+                >
+                  <EditorContent :editor="editor" class="prose max-w-none" />
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-
-      <!-- Right Sidebar - Contract Data -->
-      <div class="w-80 bg-white border-l border-gray-300 overflow-hidden flex flex-col">
-        <div class="p-4 overflow-y-auto flex-1">
-          <!-- Dynamic Variables -->
-          <div class="mt-6">
-            <VariablesList @select="insertVariable" />
-          </div>
-        </div>
-      </div>
     </div>
+    
   </div>
 </template>
 
@@ -64,7 +72,7 @@
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import UserProfileModal from "@/components/UserProfileModal.vue";
 import { useAuthStore } from "../store/authStore";
-import { useEditor, EditorContent } from "@tiptap/vue-3";
+import { storeToRefs } from "pinia";
 import StarterKit from "@tiptap/starter-kit";
 import TextAlign from "@tiptap/extension-text-align";
 import Underline from "@tiptap/extension-underline";
@@ -73,15 +81,28 @@ import TextStyle from "@tiptap/extension-text-style";
 import EditorToolbar from "@/components/EditorToolbar.vue";
 import { Variable } from "@/extensions/VariableNode";
 import VariablesList from "@/components/VariablesList.vue";
+import TemplatesList from "@/components/TemplatesList.vue";
+import EditorControlSidebar from "@/components/EditorControlSidebar.vue";
 import { useVariablesStore } from "@/store/variablesStore";
 import { useCompanyStore } from "@/store/companyStore";
+import { useTemplateStore } from "@/store/templateStore";
+import { useEditorStore } from "@/store/editorStore";
 import { Download } from "lucide-vue-next";
+import { useEditor, EditorContent } from "@tiptap/vue-3";
 import axios from "axios";
+import html2canvas from "html2canvas";
 
+const editorPageRef = ref<HTMLElement | null>(null);
 const userModalOpen = ref<boolean>(false);
+
 const authStore = useAuthStore();
 const variablesStore = useVariablesStore();
 const companyStore = useCompanyStore();
+const templateStore = useTemplateStore();
+const editorStore = useEditorStore();
+
+const { activePanel } = storeToRefs(editorStore);
+const { togglePanel } = editorStore;
 
 // Split name user to get first characters
 const userInitials = computed(() => {
@@ -113,9 +134,20 @@ const editor = useEditor({
   ],
   onUpdate: ({ editor }) => {
     // Save content to localStorage whenever it changes
-    localStorage.setItem("editorContent", editor.getHTML());
+    localStorage.setItem("editorContent", JSON.stringify(editor.getJSON()));
   },
 });
+
+const handleSelectTemplate = async (templateId: number) => {
+  const template = await templateStore.getTemplate(templateId);
+  const content_json = JSON.parse(template?.content_json);
+  
+  
+  if(editor.value) {
+    editor.value.commands.setContent(content_json);
+  }
+};
+
 
 const insertVariable = (variable: { key: string; label: string }) => {
   if (editor.value) {
@@ -127,20 +159,37 @@ const insertVariable = (variable: { key: string; label: string }) => {
 };
 
 const saveEditorContent = async () => {
-  const jsonContent: any = editor.value?.getJSON();
-  if (!jsonContent || !companyStore.company?.id) return;
+  if (!editorPageRef.value || !editor.value || !companyStore.company?.id) {
+    alert("Some required information is missing to save the content.");
+    return;
+  }
+  
   try {
-    const response = await axios.post("/template/save", {
-      content_json: jsonContent,
-      company_id: companyStore.company?.id
+    const jsonContent = editor.value.getJSON();
+    const canvas = await html2canvas(editorPageRef.value, { scale: 0.5 });
+    const imageDataUrl = canvas.toDataURL("image/png");
+    
+    const fetchResponse = await fetch(imageDataUrl);
+    const imageBlob = await fetchResponse.blob();
+    const imageFile = new File([imageBlob], "template_thumbnail.png", { type: "image/png" });
+
+    const formData = new FormData();
+    formData.append("content_json", JSON.stringify(jsonContent));
+    formData.append("company_id", String(companyStore.company.id));
+    formData.append("image", imageFile);
+
+    const response = await axios.post("/template/save", formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
     });
     
     if(response.status === 200) {
-      console.log(response);
-      console.log('Content saved successfully');
+      alert('Content saved successfully');
     }
   } catch (error: any) {
-    alert("Error saving content: " + (error.response?.data?.message || error.message));
+    const errorMessage = error.response?.data?.message || error.message;
+    console.log(errorMessage);
   }
 };
 
@@ -149,11 +198,21 @@ onMounted(() => {
     variablesStore.fetchVariables();
   }
   const savedContent = localStorage.getItem("editorContent");
+  // console.log(savedContent);
+  
   if (savedContent && editor.value) {
-    editor.value.commands.setContent(savedContent);
+    try {
+      // parse as JSON
+      const json = JSON.parse(savedContent);
+      editor.value.commands.setContent(json);
+
+    } catch (error) {
+      // Fallback to HTML if not json
+      editor.value.commands.setContent(savedContent);
+      
+    }
   }
   companyStore.getCompany();
-  
 });
 
 onUnmounted(() => {
@@ -168,10 +227,10 @@ onUnmounted(() => {
 }
 
 .variable-node {
-  background-color: oklch(96.2% 0.044 156.743);
+  background-color: #dcfce7;
   padding: 2px 4px;
   border-radius: 4px;
-  color: oklch(72.3% 0.219 149.579);
+  color: #00c951;
   font-family: monospace;
 }
 
@@ -223,5 +282,15 @@ onUnmounted(() => {
   border: none;
   border-top: 2px solid #ddd;
   margin: 2rem 0;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.1s;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 </style>
