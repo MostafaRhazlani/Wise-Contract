@@ -70,6 +70,7 @@
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import UserProfileModal from "@/components/UserProfileModal.vue";
 import { useAuthStore } from "../store/authStore";
+import { storeToRefs } from "pinia";
 import StarterKit from "@tiptap/starter-kit";
 import TextAlign from "@tiptap/extension-text-align";
 import Underline from "@tiptap/extension-underline";
@@ -83,6 +84,7 @@ import EditorControlSidebar from "@/components/EditorControlSidebar.vue";
 import { useVariablesStore } from "@/store/variablesStore";
 import { useCompanyStore } from "@/store/companyStore";
 import { useTemplateStore } from "@/store/templateStore";
+import { useEditorStore } from "@/store/editorStore";
 import { Download } from "lucide-vue-next";
 import { useEditor, EditorContent } from "@tiptap/vue-3";
 import axios from "axios";
@@ -90,20 +92,15 @@ import html2canvas from "html2canvas";
 
 const editorPageRef = ref<HTMLElement | null>(null);
 const userModalOpen = ref<boolean>(false);
-const activePanel = ref<'variables' | 'templates' | null>(null);
 
 const authStore = useAuthStore();
 const variablesStore = useVariablesStore();
 const companyStore = useCompanyStore();
 const templateStore = useTemplateStore();
+const editorStore = useEditorStore();
 
-const togglePanel = (panel: 'variables' | 'templates') => {
-  if (activePanel.value === panel) {
-    activePanel.value = null;
-  } else {
-    activePanel.value = panel;
-  }
-};
+const { activePanel } = storeToRefs(editorStore);
+const { togglePanel } = editorStore;
 
 // Split name user to get first characters
 const userInitials = computed(() => {
