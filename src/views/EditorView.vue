@@ -28,41 +28,43 @@
     </div>
 
     <!-- Main Content Area -->
-    <div class="flex h-[calc(100vh-3.5rem)]">
+    <div class="flex">
       <!-- Center area -->
-      <div class="flex-1 overflow-hidden flex flex-col transition-all duration-300" :class="{ 'mr-80': activePanel }">
+      <div class="flex-1 flex flex-col transition-all duration-300">
         <!-- Toolbar -->
         <EditorToolbar :editor="editor" />
 
-        <!-- Editor Area -->
-        <div class="flex-1 overflow-y-auto">
-          <div class="p-4 w-full">
-            <div class="max-w-4xl mx-auto">
-              <!-- A4 Paper -->
-              <div
-                ref="editorPageRef"
-                class="bg-white shadow-lg rounded-lg min-h-[297mm] max-w-[210mm] mx-auto p-16"
-              >
-                <EditorContent :editor="editor" class="prose max-w-none" />
+        <div class="flex h-[calc(100vh-7.5rem)]">
+          <!-- Floating Control Sidebar -->
+          <EditorControlSidebar @toggle-panel="togglePanel" />
+          <!-- Right Sidebar Panel -->
+          <transition name="fade">
+            <div v-if="activePanel" class="mt-2 rounded-lg w-80 bg-white shadow-lg flex flex-col">
+              <div class="p-4 overflow-y-auto flex-1">
+                <VariablesList v-if="activePanel === 'variables'" @select="insertVariable" />
+                <TemplatesList v-if="activePanel === 'templates'" @select-template="handleSelectTemplate" />
+              </div>
+            </div>
+          </transition>
+
+          <!-- Editor Area -->
+          <div class="flex-1 overflow-y-auto pt-20">
+            <div class="w-full">
+              <div class="max-w-4xl mx-auto">
+                <!-- A4 Paper -->
+                <div
+                  ref="editorPageRef"
+                  class="bg-white shadow-lg min-h-[297mm] max-w-[210mm] mx-auto p-16"
+                >
+                  <EditorContent :editor="editor" class="prose max-w-none" />
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-
-      <!-- Right Sidebar Panel -->
-      <transition name="sidebar-slide" :class="{ 'mr-16': activePanel }">
-        <div v-if="activePanel" class="fixed top-14 right-0 bottom-0 w-80 bg-white border-l border-gray-200 shadow-lg z-20 flex flex-col">
-          <div class="p-4 overflow-y-auto flex-1">
-            <VariablesList v-if="activePanel === 'variables'" @select="insertVariable" />
-            <TemplatesList v-if="activePanel === 'templates'" @select-template="handleSelectTemplate" />
-          </div>
-        </div>
-      </transition>
     </div>
     
-    <!-- Floating Control Sidebar -->
-    <EditorControlSidebar @toggle-panel="togglePanel" />
   </div>
 </template>
 
@@ -282,12 +284,13 @@ onUnmounted(() => {
   margin: 2rem 0;
 }
 
-.sidebar-slide-enter-active,
-.sidebar-slide-leave-active {
-  transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.1s;
 }
-.sidebar-slide-enter-from,
-.sidebar-slide-leave-to {
-  transform: translateX(100%);
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 </style>

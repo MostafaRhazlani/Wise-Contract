@@ -1,5 +1,5 @@
 <template>
-  <div class="fixed right-0 top-14 pt-2 bottom-0 flex bg-white border-y border-l border-gray-200 z-20">
+  <div class="left-0 top-24 pt-2 bottom-0 flex z-20">
     <div class="flex flex-col items-center p-2 space-y-2">
       <!-- Variables Icon -->
       <button @click="$emit('toggle-panel', 'variables')"

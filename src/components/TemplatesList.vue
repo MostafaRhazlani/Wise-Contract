@@ -12,7 +12,7 @@
     <div v-else class="grid grid-cols-2 gap-2">
       <div v-for="template in templateStore.templates" :key="template.id" @click="$emit('select-template', template.id)" class="cursor-pointer group">
         <div class="w-full bg-gray-100 rounded border overflow-hidden">
-          <img :src="storageBaseUrl + template.image" alt="Template image" class="object-contain h-full w-full group-hover:scale-105 transition-transform" />
+          <img :src="storageBaseUrl + template.image" alt="Template image" class="object-contain h-full w-full transition-transform" />
         </div>
       </div>
     </div>
