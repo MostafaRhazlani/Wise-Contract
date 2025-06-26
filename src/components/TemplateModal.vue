@@ -32,15 +32,35 @@
           <div class="">
             <template v-if="template.type === 'card'">
               <img
-                src="https://imgs.search.brave.com/ZB9fF90rbekheGmKpBezthyF_q2cnguwiIf94avmPKM/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9pLnBp/bmltZy5jb20vb3Jp/Z2luYWxzL2RlL2Nl/LzY2L2RlY2U2Njcx/ZWE5ODY4M2E3MDk2/YTg1ZGNlNzdlY2Uz/LmpwZw"
+                :src="getImageForTemplate(template.type)"
                 alt="Card Miniature"
+                class="w-fullcard-miniature"
+              />
+            </template>
+            <template v-else-if="template.type === 'contract'">
+              <img
+                :src="getImageForTemplate(template.type)"
+                alt="Contract Miniature"
+                class="w-fullcard-miniature"
+              />
+            </template>
+            <template v-else-if="template.type === 'certificate'">
+              <img
+                :src="getImageForTemplate(template.type)"
+                alt="Certificate Miniature"
+                class="w-fullcard-miniature"
+              />
+            </template>
+            <template v-else-if="template.type === 'purchase-order'">
+              <img
+                :src="getImageForTemplate(template.type)"
+                alt="Purchase Order Miniature"
                 class="w-fullcard-miniature"
               />
             </template>
             <template v-else>
               <component :is="template.icon" :size="48" :class="template.iconClass" class="mx-auto mb-3" />
             </template>
-            
           </div>
         </el-card>
       </template>
@@ -100,6 +120,27 @@ const emit = defineEmits<{
 // Reactive data
 const selectedType = ref('');
 const selectedTemplate = ref('');
+
+// CDN image paths
+const imageUrls = {
+  'card': 'https://cdn.jsdelivr.net/gh/mazin0eg/document-templates/images/id-card-template.jpg',
+  'contract': 'https://cdn.jsdelivr.net/gh/mazin0eg/document-templates/images/contract-template.jpg',
+  'certificate': 'https://cdn.jsdelivr.net/gh/mazin0eg/document-templates/images/certificate-template.jpg',
+  'purchase-order': 'https://cdn.jsdelivr.net/gh/mazin0eg/document-templates/images/purchase-order-template.jpg'
+};
+
+// Fallback image URLs
+const fallbackImageUrls = {
+  'card': 'https://placehold.co/400x300/e6f7ff/0072b5?text=ID+Card+Template',
+  'contract': 'https://placehold.co/400x300/f0f9eb/67c23a?text=Contract+Template',
+  'certificate': 'https://placehold.co/400x300/fdf6ec/e6a23c?text=Certificate+Template',
+  'purchase-order': 'https://placehold.co/400x300/f2f6fc/409eff?text=Purchase+Order+Template'
+};
+
+// Function to get image URL with fallback
+function getImageForTemplate(type: string) {
+  return imageUrls[type as keyof typeof imageUrls] || fallbackImageUrls[type as keyof typeof fallbackImageUrls];
+}
 
 // Computed
 const visible = computed({
@@ -292,11 +333,10 @@ function getTagType(type: string) {
 }
 
 /* Card miniature styling */
-.card-miniature {
-  width: 48px;
-  height: 48px;
+.w-fullcard-miniature {
+  width: 100%;
+  height: 150px;
   object-fit: cover;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
 }
 </style>
