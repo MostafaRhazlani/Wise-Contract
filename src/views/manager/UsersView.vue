@@ -15,10 +15,10 @@
       stripe
     >
       <!-- Selection checkbox column -->
-      <el-table-column type="selection" width="60" align="center" />
+      <el-table-column type="selection" align="start" />
       
       <!-- User column with avatar -->
-      <el-table-column label="User" width="324" align="left">
+      <el-table-column label="User" align="left">
         <template #default="scope">
           <div class="flex items-center">
             <el-skeleton :loading="loading" animated style="width: 100%">
@@ -65,8 +65,7 @@
       <!-- Post column -->
       <el-table-column 
         property="post" 
-        label="Post" 
-        width="220"
+        label="Post"
         align="center"
       >
         <template #default="scope">

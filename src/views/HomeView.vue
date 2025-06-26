@@ -31,29 +31,7 @@
       </div>
 
       <!-- Design Type Icons -->
-      <div class="flex justify-center space-x-6 mb-12">
-        <div
-          v-for="templateTypes in templateTypes"
-          :key="templateTypes.name"
-          class="flex flex-col items-center cursor-pointer group"
-          @click="selectTemplateTypes(templateTypes)"
-        >
-          <div
-            @click="chooseType(templateTypes)"
-            class="w-16 h-16 rounded-full flex items-center justify-center mb-2 shadow-lg transition-transform group-hover:scale-105 relative"
-            :style="{ backgroundColor: templateTypes.color }"
-          >
-            <component :is="templateTypes.icon" class="w-8 h-8 text-white" />
-            <span
-              v-if="templateTypes.badge"
-              class="absolute -top-1 -right-1 bg-purple-500 text-white text-xs px-1.5 py-0.5 rounded-full font-medium"
-            >
-              {{ templateTypes.badge }}
-            </span>
-          </div>
-          <span class="text-sm text-gray-700 font-medium">{{ templateTypes.name }}</span>
-        </div>
-      </div>
+      <TemplateTypesList />
     </header>
 
     <!-- Recent Templates Section -->
@@ -67,7 +45,6 @@
         </div>
 
         <div class="mt-8">
-          <h2 class="text-xl font-semibold text-gray-800 mb-4">Recent designs</h2>
 
           <!-- Loading state -->
           <div
@@ -144,44 +121,19 @@ import { ref, onMounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import { useTemplateStore } from "@/store/templateStore";
 import { useCompanyStore } from "@/store/companyStore";
+import TemplateTypesList from "@/components/TemplateTypesList.vue";
 import {
   SearchIcon,
   ArrowRightIcon,
   FileTextIcon,
-  ReceiptText,
   MoreHorizontalIcon,
-  FileUser,
 } from "lucide-vue-next";
-
-interface TemplateTypes {
-  name: string;
-  icon: any;
-  color: string;
-  badge?: string;
-}
 
 const router = useRouter();
 const templateStore = useTemplateStore();
 const companyStore = useCompanyStore();
 const templates = computed(() => templateStore.templates);
 const storageBaseUrl = import.meta.env.VITE_STORAGE_BASE_URL
-
-const templateTypes = ref<TemplateTypes[]>([
-  { name: "Document", icon: FileTextIcon, color: "#06b6d4" },
-  { name: "CV", icon: FileUser, color: "#10b981" },
-  { name: "Contrat", icon: ReceiptText, color: "#f97316" },
-]);
-
-const selectTemplateTypes = (templateTypes: TemplateTypes) => {
-  console.log("Design type selected:", templateTypes.name);
-};
-
-const chooseType = (templateTypes: TemplateTypes) => {
-  router.push({
-    name: "Editor",
-    params: { type: templateTypes.name.toLowerCase() },
-  });
-};
 
 onMounted(() => {
   companyStore.getCompany();

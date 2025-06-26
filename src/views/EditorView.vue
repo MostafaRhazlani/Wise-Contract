@@ -2,12 +2,14 @@
   <div class="bg-slate-100">
     <!-- Header with navigation -->
     <div class="bg-green-400 p-2 flex justify-between items-center">
-      <div class="flex items-center gap-2">
-        <div class="w-10 h-10 rounded-full overflow-hidden">
-          <img class="object-cover w-full h-full" :src="companyStore.company?.company_logo" alt="" />
-        </div>
-        <h1 class="font-semibold text-white text-lg">{{ companyStore.company?.company_name }}</h1>
-      </div>
+        <RouterLink to="/">
+          <div class="flex items-center gap-2">
+              <div class="w-10 h-10 rounded-full overflow-hidden">
+                <img class="object-cover w-full h-full" :src="companyStore.company?.company_logo" alt="" />
+              </div>
+              <h1 class="font-semibold text-white text-lg">{{ companyStore.company?.company_name }}</h1>
+          </div>
+        </RouterLink>
       <div class="flex items-center space-x-4">
         <!-- Download Button -->
         <button title="donwload template" @click="saveEditorContent" class="ml-4 p-2 text-white rounded hover:bg-green-500 transition">
