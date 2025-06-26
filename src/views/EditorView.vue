@@ -93,6 +93,8 @@ import { Download } from "lucide-vue-next";
 import { useEditor, EditorContent } from "@tiptap/vue-3";
 import axios from "axios";
 import html2canvas from "html2canvas";
+import { useTypeStore } from "@/store/typeStore";
+import { useRoute } from "vue-router";
 
 const editorPageRef = ref<HTMLElement | null>(null);
 const userModalOpen = ref<boolean>(false);
@@ -102,6 +104,8 @@ const variablesStore = useVariablesStore();
 const companyStore = useCompanyStore();
 const templateStore = useTemplateStore();
 const editorStore = useEditorStore();
+const typeStore = useTypeStore();
+const route = useRoute();
 
 const { activePanel } = storeToRefs(editorStore);
 const { togglePanel } = editorStore;
@@ -165,12 +169,22 @@ const saveEditorContent = async () => {
     alert("Some required information is missing to save the content.");
     return;
   }
-  
+
+  // Get type slug from route and find type id
+  const typeSlug = route.params.type;
+  if (!typeStore.types.length) {
+    await typeStore.getTypes();
+  }
+  const typeObj = typeStore.types.find(
+    (t) => t.title.toLowerCase() === String(typeSlug).toLowerCase()
+  );
+  if (!typeObj) return;
+
   try {
     const jsonContent = editor.value.getJSON();
     const canvas = await html2canvas(editorPageRef.value, { scale: 0.5 });
     const imageDataUrl = canvas.toDataURL("image/png");
-    
+
     const fetchResponse = await fetch(imageDataUrl);
     const imageBlob = await fetchResponse.blob();
     const imageFile = new File([imageBlob], "template_thumbnail.png", { type: "image/png" });
@@ -178,6 +192,7 @@ const saveEditorContent = async () => {
     const formData = new FormData();
     formData.append("content_json", JSON.stringify(jsonContent));
     formData.append("company_id", String(companyStore.company.id));
+    formData.append("type_id", String(typeObj.id));
     formData.append("image", imageFile);
 
     const response = await axios.post("/template/save", formData, {
@@ -185,8 +200,9 @@ const saveEditorContent = async () => {
         'Content-Type': 'multipart/form-data'
       }
     });
-    
+
     if(response.status === 200) {
+      templateStore.getTemplates();
       alert('Content saved successfully');
     }
   } catch (error: any) {
