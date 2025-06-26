@@ -1,14 +1,10 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import axios from 'axios';
+import { Company } from '@/types/company';
 
 export const useCompanyStore = defineStore('company', () => {
 
-    interface Company {
-        id: number;
-        company_name: string;
-        company_logo: string;
-    }
   const company = ref<Company | null>(JSON.parse(localStorage.getItem('company') || 'null'));
   const loading = ref(false);
   const error = ref<string | null>(null);

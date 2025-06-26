@@ -1,18 +1,7 @@
 import { defineStore } from "pinia";
 import axios from "@/plugins/axios";
+import { TypeState } from '@/types/type';
 
-interface Type {
-  id: number;
-  title: string;
-  logo: string;
-  color: string;
-}
-
-interface TypeState {
-  types: Type[];
-  loading: boolean;
-  error: string | null;
-}
 
 export const useTypeStore = defineStore("type", {
   state: (): TypeState => ({

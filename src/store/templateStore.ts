@@ -1,21 +1,7 @@
 import { defineStore } from 'pinia';
 import axios from 'axios';
 import { useCompanyStore } from './companyStore';
-
-export interface Template {
-  id: number;
-  content_json: any;
-  image: string;
-  company_id: number;
-  created_at: string;
-  updated_at: string;
-}
-
-interface TemplateStoreState {
-  templates: Template[];
-  loading: boolean;
-  error: string | null;
-}
+import { TemplateStoreState, Template } from '@/types/template';
 
 export const useTemplateStore = defineStore('template', {
   state: (): TemplateStoreState => ({

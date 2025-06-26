@@ -1,11 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import axios from 'axios';
-
-export interface Variable {
-  key: string;
-  label: string;
-}
+import { Variable } from '@/types/variable';
 
 export const useVariablesStore = defineStore('variables', () => {
   const variables = ref<Variable[]>([]);
