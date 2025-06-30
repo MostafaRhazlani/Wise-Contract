@@ -3,6 +3,7 @@ export interface Template {
     content_json: any;
     image: string;
     company_id: number;
+    type_id: number;
     created_at: string;
     updated_at: string;
     type: {

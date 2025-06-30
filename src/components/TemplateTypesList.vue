@@ -56,7 +56,7 @@ const getIconComponent = (iconName: string) => {
 const chooseType = (type: any) => {
   router.push({
     name: "Editor",
-    params: { type: type.title.toLowerCase() },
+    params: { type_id: type.id },
   });
   localStorage.removeItem('editorContent')
 };

@@ -83,7 +83,7 @@
               :key="template.id"
               :to="{
                 name: 'Editor',
-                params: { type: template.type.title.toLowerCase(), templateId: template.id }
+                params: { type_id: template.type.id, templateId: template.id }
               }"
               class="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
             >
@@ -145,7 +145,6 @@ const getIconComponent = (iconName: string) => {
 onMounted(async () => {
   await companyStore.getCompany();
   await templateStore.getTemplatesCompany();
-  console.log(templateStore.templates);
 });
 </script>
 
