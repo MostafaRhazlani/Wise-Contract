@@ -1,11 +1,11 @@
 import { defineStore } from "pinia";
 import axios from "@/plugins/axios";
-import { TypeState } from '@/types/type';
+import { TypeState, Type } from '@/types/type';
 
 
 export const useTypeStore = defineStore("type", {
   state: (): TypeState => ({
-    types: [],
+    types: [] as Type[],
     loading: false,
     error: null,
   }),

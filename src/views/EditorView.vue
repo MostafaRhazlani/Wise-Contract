@@ -44,7 +44,10 @@
             <div v-if="activePanel" class="mt-2 rounded-lg w-80 bg-white shadow-lg flex flex-col">
               <div class="p-4 overflow-y-auto flex-1">
                 <VariablesList v-if="activePanel === 'variables'" @select="insertVariable" />
-                <TemplatesList v-if="activePanel === 'templates'" @select-template="handleSelectTemplate" />
+                <div v-if="activePanel === 'templates'">
+                  <h3 class="font-semibold text-gray-800 mb-4">Templates</h3>
+                  <TemplatesList @select-template="handleSelectTemplate" />
+                </div>
               </div>
             </div>
           </transition>
@@ -169,16 +172,6 @@ const saveEditorContent = async () => {
     return;
   }
 
-  // Get type slug from route and find type id
-  const typeSlug = route.params.type;
-  if (!typeStore.types.length) {
-    await typeStore.getTypes();
-  }
-  const typeObj = typeStore.types.find(
-    (t) => t.title.toLowerCase() === String(typeSlug).toLowerCase()
-  );
-  if (!typeObj) return;
-
   try {
     const jsonContent = editor.value.getJSON();
     const canvas = await html2canvas(editorPageRef.value, { scale: 0.5 });
@@ -191,7 +184,7 @@ const saveEditorContent = async () => {
     const formData = new FormData();
     formData.append("content_json", JSON.stringify(jsonContent));
     formData.append("company_id", String(companyStore.company.id));
-    formData.append("type_id", String(typeObj.id));
+    formData.append("type_id", String(route.params.type_id));
     formData.append("image", imageFile);
 
     const response = await axios.post("/template/save", formData, {
@@ -201,8 +194,7 @@ const saveEditorContent = async () => {
     });
 
     if(response.status === 200) {
-      templateStore.getTemplatesCompanyWithType();
-      alert('Content saved successfully');
+      templateStore.getTemplatesCompany();
     }
   } catch (error: any) {
     const errorMessage = error.response?.data?.message || error.message;

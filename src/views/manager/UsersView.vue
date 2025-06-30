@@ -212,8 +212,6 @@ function uploadFile(user: User) {
 }
 
 function handleGenerate(templateId: string, user: User) {
-  // Handle document generation here
-  console.log('Generate document:', templateId, 'for user:', user);
   uploadModalVisible.value = false;
   selectedUser.value = null;
 }

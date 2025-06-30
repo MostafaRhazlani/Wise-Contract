@@ -12,7 +12,7 @@ export const useTemplateStore = defineStore('template', {
     error: null,
   }),
   actions: {
-    async getTemplatesCompanyWithType() {
+    async getTemplatesCompanyWithType(type_id: number) {
       const companyStore = useCompanyStore();
       const companyId = companyStore.company?.id;
     
@@ -21,24 +21,11 @@ export const useTemplateStore = defineStore('template', {
         return;
       }
 
-      // Fetch templates filtered by type
-      const typeStore = useTypeStore();
-      const route = useRoute();
-      
-      const typeSlug = route.params.type;
-      if (!typeStore.types.length) {
-        await typeStore.getTypes();
-      }
-      const typeObj = typeStore.types.find(
-        (t) => t.title.toLowerCase() === String(typeSlug).toLowerCase()
-      );
-      if(!typeObj) return;
-
       this.loading = true;
       this.error = null;
       try {
 
-        let url = `/company/templates/${companyId}/${typeObj.id}`;
+        let url = `/company/templates/${companyId}/${type_id}`;
         const response = await axios.get(url);
         
         this.templates = response.data.templates;
