@@ -44,7 +44,10 @@
             <div v-if="activePanel" class="mt-2 rounded-lg w-80 bg-white shadow-lg flex flex-col">
               <div class="p-4 overflow-y-auto flex-1">
                 <VariablesList v-if="activePanel === 'variables'" @select="insertVariable" />
-                <TemplatesList v-if="activePanel === 'templates'" @select-template="handleSelectTemplate" />
+                <div v-if="activePanel === 'templates'">
+                  <h3 class="font-semibold text-gray-800 mb-4">Templates</h3>
+                  <TemplatesList @select-template="handleSelectTemplate" />
+                </div>
               </div>
             </div>
           </transition>

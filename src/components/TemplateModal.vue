@@ -22,49 +22,17 @@
       </el-select>
     </div>
 
-    <div class="grid grid-cols-3 gap-4">
-      <template v-for="template in filteredTemplates" :key="template.id">
-        <el-card 
-          class="template-card cursor-pointer hover:shadow-lg transition-shadow"
-          @click="selectTemplate(template.id)"
-          :class="{ 'selected': selectedTemplate === template.id }"
-        >
-          <div class="">
-            <template v-if="template.type === 'card'">
-              <img
-                :src="getImageForTemplate(template.type)"
-                alt="Card Miniature"
-                class="w-fullcard-miniature"
-              />
-            </template>
-            <template v-else-if="template.type === 'contract'">
-              <img
-                :src="getImageForTemplate(template.type)"
-                alt="Contract Miniature"
-                class="w-fullcard-miniature"
-              />
-            </template>
-            <template v-else-if="template.type === 'certificate'">
-              <img
-                :src="getImageForTemplate(template.type)"
-                alt="Certificate Miniature"
-                class="w-fullcard-miniature"
-              />
-            </template>
-            <template v-else-if="template.type === 'purchase-order'">
-              <img
-                :src="getImageForTemplate(template.type)"
-                alt="Purchase Order Miniature"
-                class="w-fullcard-miniature"
-              />
-            </template>
-            <template v-else>
-              <component :is="template.icon" :size="48" :class="template.iconClass" class="mx-auto mb-3" />
-            </template>
-          </div>
-        </el-card>
-      </template>
+    <!-- Debug info (remove in production) -->
+    <div v-if="selectedTemplate" class="mb-4 p-2 bg-blue-50 rounded text-sm">
+      Selected Template ID: {{ selectedTemplate }}
     </div>
+
+    <!-- Pass props to TemplatesList -->
+    <TemplatesList 
+      @select-template="selectTemplate"
+      :selected-template="selectedTemplate"
+      :filter-type="selectedType"
+    />
 
     <template #footer>
       <div class="dialog-footer">
@@ -73,18 +41,35 @@
           type="primary" 
           @click="generateDocument"
           :disabled="!selectedTemplate"
+          :loading="generating"
         >
-          Generate Document
+          {{ generating ? 'Generating PDF...' : 'Generate Document' }}
         </el-button>
       </div>
     </template>
   </el-dialog>
+
+  <!-- Hidden div for PDF generation -->
+  <div 
+    ref="pdfContent" 
+    id="pdf-content" 
+    style="position: absolute; left: -9999px; top: -9999px; width: 794px; padding: 40px; background: white;"
+  >
+    <!-- PDF content will be inserted here -->
+  </div>
 </template>
 
 <script setup lang="ts">
+import TemplatesList from '@/components/TemplatesList.vue';
 import { ref, computed, watch } from 'vue';
 import { ElMessage } from 'element-plus';
-import { FileText, ShoppingCart, Award, FileCheck, CreditCard, Users, ClipboardList } from 'lucide-vue-next';
+import { useTemplateStore } from '@/store/templateStore';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+
+// Import Tiptap for JSON to HTML conversion
+import { generateHTML } from '@tiptap/html'
+import StarterKit from '@tiptap/starter-kit'
 
 interface User {
   id: number;
@@ -94,15 +79,15 @@ interface User {
   post: string;
   phone: string;
   avatar: string;
-}
-
-interface Template {
-  id: string;
-  name: string;
-  description: string;
-  type: 'card' | 'contract' | 'certificate' | 'purchase-order';
-  icon: any;
-  iconClass: string;
+  join_date?: string;
+  created_at?: string;
+  role?: { role_name: string };
+  company?: { 
+    company_name: string;
+    email: string;
+    phone: string;
+    address: string;
+  };
 }
 
 // Props
@@ -120,147 +105,14 @@ const emit = defineEmits<{
 // Reactive data
 const selectedType = ref('');
 const selectedTemplate = ref('');
-
-// CDN image paths
-const imageUrls = {
-  'card': 'https://cdn.jsdelivr.net/gh/mazin0eg/document-templates/images/id-card-template.jpg',
-  'contract': 'https://cdn.jsdelivr.net/gh/mazin0eg/document-templates/images/contract-template.jpg',
-  'certificate': 'https://cdn.jsdelivr.net/gh/mazin0eg/document-templates/images/certificate-template.jpg',
-  'purchase-order': 'https://cdn.jsdelivr.net/gh/mazin0eg/document-templates/images/purchase-order-template.jpg'
-};
-
-// Fallback image URLs
-const fallbackImageUrls = {
-  'card': 'https://placehold.co/400x300/e6f7ff/0072b5?text=ID+Card+Template',
-  'contract': 'https://placehold.co/400x300/f0f9eb/67c23a?text=Contract+Template',
-  'certificate': 'https://placehold.co/400x300/fdf6ec/e6a23c?text=Certificate+Template',
-  'purchase-order': 'https://placehold.co/400x300/f2f6fc/409eff?text=Purchase+Order+Template'
-};
-
-// Function to get image URL with fallback
-function getImageForTemplate(type: string) {
-  return imageUrls[type as keyof typeof imageUrls] || fallbackImageUrls[type as keyof typeof fallbackImageUrls];
-}
+const generating = ref(false);
+const pdfContent = ref<HTMLElement>();
+const templateStore = useTemplateStore();
 
 // Computed
 const visible = computed({
   get: () => props.modelValue,
   set: (value) => emit('update:modelValue', value)
-});
-
-// All available templates
-const allTemplates = ref<Template[]>([
-  // Card Templates
-  {
-    id: 'employee-card',
-    name: 'Employee Card',
-    description: 'Standard employee identification card',
-    type: 'card',
-    icon: CreditCard,
-    iconClass: 'text-blue-500'
-  },
-  {
-    id: 'access-card',
-    name: 'Access Card',
-    description: 'Building and system access card',
-    type: 'card',
-    icon: Users,
-    iconClass: 'text-green-500'
-  },
-  {
-    id: 'visitor-card',
-    name: 'Visitor Card',
-    description: 'Temporary visitor identification card',
-    type: 'card',
-    icon: CreditCard,
-    iconClass: 'text-orange-500'
-  },
-  
-  // Contract Templates
-  {
-    id: 'employment-contract',
-    name: 'Employment Contract',
-    description: 'Standard employment agreement',
-    type: 'contract',
-    icon: FileText,
-    iconClass: 'text-blue-600'
-  },
-  {
-    id: 'freelance-contract',
-    name: 'Freelance Contract',
-    description: 'Freelancer service agreement',
-    type: 'contract',
-    icon: FileText,
-    iconClass: 'text-purple-600'
-  },
-  {
-    id: 'nda-contract',
-    name: 'NDA Contract',
-    description: 'Non-disclosure agreement',
-    type: 'contract',
-    icon: FileText,
-    iconClass: 'text-red-600'
-  },
-  
-  // Certificate Templates
-  {
-    id: 'completion-certificate',
-    name: 'Completion Certificate',
-    description: 'Course or training completion certificate',
-    type: 'certificate',
-    icon: Award,
-    iconClass: 'text-yellow-500'
-  },
-  {
-    id: 'achievement-certificate',
-    name: 'Achievement Certificate',
-    description: 'Performance achievement certificate',
-    type: 'certificate',
-    icon: Award,
-    iconClass: 'text-gold-500'
-  },
-  {
-    id: 'attendance-certificate',
-    name: 'Attendance Certificate',
-    description: 'Event or meeting attendance certificate',
-    type: 'certificate',
-    icon: Award,
-    iconClass: 'text-green-600'
-  },
-  
-  // Purchase Order Templates
-  {
-    id: 'standard-po',
-    name: 'Standard Purchase Order',
-    description: 'Standard goods purchase order',
-    type: 'purchase-order',
-    icon: ShoppingCart,
-    iconClass: 'text-green-500'
-  },
-  {
-    id: 'service-po',
-    name: 'Service Purchase Order',
-    description: 'Service procurement order',
-    type: 'purchase-order',
-    icon: ClipboardList,
-    iconClass: 'text-blue-500'
-  },
-  {
-    id: 'urgent-po',
-    name: 'Urgent Purchase Order',
-    description: 'Priority purchase order',
-    type: 'purchase-order',
-    icon: ShoppingCart,
-    iconClass: 'text-red-500'
-  }
-]);
-
-// Computed property for filtered templates
-const filteredTemplates = computed(() => {
-  if (!selectedType.value) {
-    return allTemplates.value;
-  }
-  return allTemplates.value.filter(template => template.type === selectedType.value);
 });
 
 // Watch for modal opening to reset selections
@@ -272,37 +124,100 @@ watch(() => props.modelValue, (newValue) => {
 });
 
 // Methods
-function selectTemplate(templateId: string) {
-  selectedTemplate.value = templateId;
+function selectTemplate(templateId: string | number) {
+  console.log('Template selected:', templateId);
+  selectedTemplate.value = String(templateId);
+  ElMessage.success(`Template ${templateId} selected`);
 }
 
 function filterTemplates() {
   selectedTemplate.value = '';
 }
 
-function generateDocument() {
-  if (selectedTemplate.value && props.user) {
-    const template = allTemplates.value.find(t => t.id === selectedTemplate.value);
-    ElMessage.success(`Generating ${template?.name} for ${props.user.name}`);
-    emit('generate', selectedTemplate.value, props.user);
-    handleClose();
+async function generateDocument() {
+  if (!selectedTemplate.value || !props.user) {
+    ElMessage.error('Please select a template');
+    return;
   }
+
+  generating.value = true;
+
+  try {
+    // Get the selected template
+    const template = templateStore.templates.find(t => String(t.id) === selectedTemplate.value);
+    
+    if (!template) {
+      ElMessage.error('Template not found');
+      return;
+    }
+
+    // Use Tiptap to convert JSON to HTML and replace variables
+    const content_json = template.content_json;
+    
+    console.log('Processed HTML content:', content_json);
+    const htmlContent = generateHTML(content_json, [StarterKit]);
+
+    console.log(htmlContent);
+    
+    handleClose();
+
+  } catch (error: any) {
+    console.error('PDF generation failed:', error);
+    ElMessage.error('Failed to generate PDF. Please try again.');
+  } finally {
+    generating.value = false;
+  }
+}
+
+async function generatePDF(userName: string, templateName: string) {
+  if (!pdfContent.value) return;
+
+  // Create canvas from HTML content
+  const canvas = await html2canvas(pdfContent.value, {
+    scale: 2,
+    useCORS: true,
+    allowTaint: true,
+    backgroundColor: '#ffffff',
+    width: pdfContent.value.scrollWidth,
+    height: pdfContent.value.scrollHeight
+  });
+
+  // Create PDF
+  const pdf = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4'
+  });
+
+  const imgData = canvas.toDataURL('image/png');
+  const imgWidth = 210; // A4 width in mm
+  const pageHeight = 295; // A4 height in mm
+  const imgHeight = (canvas.height * imgWidth) / canvas.width;
+  let heightLeft = imgHeight;
+
+  let position = 0;
+
+  // Add image to PDF
+  pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+  heightLeft -= pageHeight;
+
+  // Add new pages if content is longer than one page
+  while (heightLeft >= 0) {
+    position = heightLeft - imgHeight;
+    pdf.addPage();
+    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+  }
+
+  // Download the PDF
+  const fileName = `${userName.replace(/\s+/g, '_')}_${templateName}_${new Date().toISOString().split('T')[0]}.pdf`;
+  pdf.save(fileName);
 }
 
 function handleClose() {
   visible.value = false;
   selectedType.value = '';
   selectedTemplate.value = '';
-}
-
-function getTagType(type: string) {
-  switch (type) {
-    case 'card': return 'primary';
-    case 'contract': return 'success';
-    case 'certificate': return 'warning';
-    case 'purchase-order': return 'info';
-    default: return 'primary';
-  }
 }
 </script>
 
@@ -330,6 +245,10 @@ function getTagType(type: string) {
 
 .el-select {
   margin-bottom: 16px;
+}
+
+#pdf-content {
+  font-family: Arial, sans-serif;
 }
 
 /* Card miniature styling */
