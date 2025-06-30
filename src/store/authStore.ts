@@ -1,25 +1,15 @@
 import { defineStore } from 'pinia'
 import axios from '../plugins/axios'
-import { ref, computed } from 'vue'
-
-interface User {
-    id: number
-    name: string
-    email: string
-    role: string
-}
-
-interface ValidationErrors {
-    email?: string[]
-    password?: string[]
-    incorrectField?: string[]
-}
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { User, ValidationErrors } from '@/types/user'
 
 export const useAuthStore = defineStore('auth', () => {
     const token = ref<string | null>(localStorage.getItem('token'))
     const user = ref<User | null>(JSON.parse(localStorage.getItem('user') || 'null'))
-    const userRole = ref<string | null>(localStorage.getItem('userRole'))
+    const userRole = ref<number | null>(localStorage.getItem('userRole') ? parseInt(localStorage.getItem('userRole')!) : null)
     const errors = ref<ValidationErrors>({})
+    const router = useRouter()
 
     const setUser = (userData: User) => {
         user.value = userData
@@ -39,7 +29,14 @@ export const useAuthStore = defineStore('auth', () => {
             if (response.data.user) {
                 setUser(response.data.user)
                 userRole.value = response.data.user.role_id
-                localStorage.setItem('userRole', response.data.user.role_id)
+                localStorage.setItem('userRole', response.data.user.role_id.toString())
+
+                // Redirect based on role
+                if (response.data.user.role_id === 3) {
+                    router.push({ name: 'ManagerDashboard' })
+                } else if (response.data.user.role_id === 4) {
+                    router.push({ name: 'Home' })
+                }
             }
 
         } catch (error: any) {

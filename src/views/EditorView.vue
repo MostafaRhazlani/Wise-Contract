@@ -1,413 +1,67 @@
 <template>
   <div class="bg-slate-100">
     <!-- Header with navigation -->
-    <div class="bg-green-400 p-2 flex justify-between items-center">
-      <div class="flex items-center space-x-2">
-        <button @click="exportToPDF" class="p-2 hover:bg-green-500 rounded">
-          <svg
-            class="w-5 h-5 text-white"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-            />
-          </svg>
-        </button>
-      </div>
-      <!-- User Profile Section -->
-      <div class="relative">
-        <button
-          @click="userModalOpen = !userModalOpen"
-          class="flex items-center space-x-2 rounded-lg transition-colors"
-        >
-          <div
-            class="w-10 h-10 bg-gradient-to-br from-red-400 to-red-600 rounded-full flex items-center justify-center"
-          >
-            <span class="text-white text-sm font-semibold">{{ userInitials }}</span>
+    <div class="bg-green-400 p-2 flex justify-between items-center" @click="templateStore.getTemplatesCompany">
+        <RouterLink to="/">
+          <div class="flex items-center gap-2">
+              <div class="w-10 h-10 rounded-full overflow-hidden">
+                <img class="object-cover w-full h-full" :src="companyStore.company?.company_logo" alt="" />
+              </div>
+              <h1 class="font-semibold text-white text-lg">{{ companyStore.company?.company_name }}</h1>
           </div>
+        </RouterLink>
+      <div class="flex items-center space-x-4">
+        <!-- Download Button -->
+        <button title="donwload template" @click="saveEditorContent" class="ml-4 p-2 text-white rounded hover:bg-green-500 transition">
+          <Download />
         </button>
-
-        <UserProfileModal v-model:show="userModalOpen" position="top" />
+        <!-- User Profile Section -->
+        <div class="relative">
+          <button @click="userModalOpen = !userModalOpen"
+            class="flex items-center space-x-2 rounded-lg transition-colors">
+            <div
+              class="w-10 h-10 bg-gradient-to-br from-red-400 to-red-600 rounded-full flex items-center justify-center">
+              <span class="text-white text-sm font-semibold">{{ userInitials }}</span>
+            </div>
+          </button>
+          <UserProfileModal v-model:show="userModalOpen" position="top" />
+        </div>
       </div>
     </div>
 
     <!-- Main Content Area -->
-    <div class="flex h-[calc(100vh-3.5rem)] overflow-hidden">
-      <!-- Left Sidebar - Filters -->
-      <div class="w-72 bg-white border-r border-gray-300 overflow-y-auto flex flex-col">
-        <div class="p-3 overflow-y-auto flex-1">
-          <!-- Department Filter -->
-          <div class="mb-6">
-            <div
-              class="flex items-center justify-between cursor-pointer"
-              @click="toggleDepartmentDropdown"
-            >
-              <h3 class="font-semibold text-gray-800">Choose Department:</h3>
-              <svg
-                :class="[
-                  'w-4 h-4 transition-transform',
-                  departmentDropdownOpen ? 'rotate-180' : '',
-                ]"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M19 9l-7 7-7-7"
-                />
-              </svg>
-            </div>
-            <div v-show="departmentDropdownOpen" class="mt-3 space-y-2">
-              <label
-                v-for="department in departments"
-                :key="department.id"
-                class="flex items-center space-x-2 cursor-pointer"
-              >
-                <input
-                  type="checkbox"
-                  v-model="selectedDepartments"
-                  :value="department.id"
-                  @change="filterUsers"
-                  class="rounded border-gray-300 text-green-600 focus:ring-green-500"
-                />
-                <span class="text-sm text-gray-700">{{
-                  department.department_name
-                }}</span>
-              </label>
-            </div>
-          </div>
-
-          <!-- Column Filter -->
-          <div class="mb-6">
-            <div
-              class="flex items-center justify-between cursor-pointer"
-              @click="toggleColumnDropdown"
-            >
-              <h3 class="font-semibold text-gray-800">Choose Columns:</h3>
-              <svg
-                :class="[
-                  'w-4 h-4 transition-transform',
-                  columnDropdownOpen ? 'rotate-180' : '',
-                ]"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M19 9l-7 7-7-7"
-                />
-              </svg>
-            </div>
-            <div v-show="columnDropdownOpen" class="mt-3 space-y-2">
-              <label
-                v-for="column in availableColumns"
-                :key="column.key"
-                class="flex items-center space-x-2 cursor-pointer"
-              >
-                <input
-                  type="checkbox"
-                  v-model="selectedColumns"
-                  :value="column.key"
-                  class="rounded border-gray-300 text-green-600 focus:ring-green-500"
-                />
-                <span class="text-sm text-gray-700">{{ column.label }}</span>
-              </label>
-            </div>
-          </div>
-
-          <!-- Search -->
-          <div class="mb-6">
-            <div class="relative">
-              <input
-                v-model="searchQuery"
-                @input="filterUsers"
-                type="text"
-                placeholder="Search..."
-                class="w-full pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none focus:border-transparent"
-              />
-              <button class="absolute right-3 top-1/2 transform -translate-y-1/2">
-                <svg
-                  class="w-4 h-4 text-gray-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  />
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          <!-- Filtered Users Results -->
-          <div class="mb-6">
-            <h3 class="font-semibold text-gray-800 mb-3">
-              Users ({{ filteredUsers.length }})
-            </h3>
-            <div class="space-y-3 overflow-y-auto max-h-[calc(100vh-300px)]">
-              <div
-                v-for="user in filteredUsers"
-                :key="user.id"
-                :class="[
-                  'p-3 border rounded-lg transition-colors',
-                  selectedUser?.id === user.id
-                    ? 'bg-green-100 border-green-300'
-                    : 'bg-gray-50 border-gray-200',
-                ]"
-                @click="selectUser(user)"
-              >
-                <div class="space-y-2">
-                  <div
-                    v-if="selectedColumns.includes('name')"
-                    class="p-2 bg-white border border-gray-200 rounded"
-                  >
-                    <div class="flex items-center justify-between">
-                      <span class="text-sm font-medium">{{ user.name }}</span>
-                    </div>
-                    <span class="text-xs text-gray-500">Name</span>
-                  </div>
-
-                  <div
-                    v-if="selectedColumns.includes('email')"
-                    class="p-2 bg-white border border-gray-200 rounded"
-                  >
-                    <div class="flex items-center justify-between">
-                      <span class="text-sm truncate">{{ user.email }}</span>
-                    </div>
-                    <span class="text-xs text-gray-500">Email</span>
-                  </div>
-
-                  <div
-                    v-if="selectedColumns.includes('phone')"
-                    class="p-2 bg-white border border-gray-200 rounded"
-                  >
-                    <div class="flex items-center justify-between">
-                      <span class="text-sm">{{ user.phone }}</span>
-                    </div>
-                    <span class="text-xs text-gray-500">Phone</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
+    <div class="flex">
       <!-- Center area -->
-      <div class="flex-1 overflow-hidden flex flex-col">
+      <div class="flex-1 flex flex-col transition-all duration-300">
         <!-- Toolbar -->
-        <div class="bg-slate-100 border-b border-gray-200">
-          <div class="p-4">
-            <div class="bg-white rounded-lg shadow-sm p-2">
-              <div
-                class="flex items-center space-x-2 overflow-x-auto whitespace-nowrap"
-              >
-                <!-- Basic Formatting -->
-                <div class="flex space-x-1 flex-shrink-0">
-                  <button
-                    class="px-2 py-1 border rounded text-sm font-bold border-gray-300 hover:bg-gray-100"
-                    onclick="document.execCommand('bold', false, null)"
-                  >
-                    B
-                  </button>
-                  <button
-                    class="px-2 py-1 border rounded text-sm italic border-gray-300 hover:bg-gray-100"
-                    onclick="document.execCommand('italic', false, null)"
-                  >
-                    I
-                  </button>
-                  <button
-                    class="px-2 py-1 border rounded text-sm underline border-gray-300 hover:bg-gray-100"
-                    onclick="document.execCommand('underline', false, null)"
-                  >
-                    U
-                  </button>
-                  <button
-                    class="px-2 py-1 border rounded text-sm line-through border-gray-300 hover:bg-gray-100"
-                    onclick="document.execCommand('strikeThrough', false, null)"
-                  >
-                    S
-                  </button>
-                </div>
+        <EditorToolbar :editor="editor" />
 
-                <!-- Alignment -->
-                <div class="flex space-x-1 flex-shrink-0">
-                  <button
-                    class="p-2 border rounded border-gray-300 hover:bg-gray-100"
-                    onclick="document.execCommand('justifyLeft', false, null)"
-                  >
-                    <svg
-                      class="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M4 6h16M4 12h8m-8 6h16"
-                      />
-                    </svg>
-                  </button>
-                  <button
-                    class="p-2 border rounded border-gray-300 hover:bg-gray-100"
-                    onclick="document.execCommand('justifyCenter', false, null)"
-                  >
-                    <svg
-                      class="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M4 6h16M8 12h8M6 18h12"
-                      />
-                    </svg>
-                  </button>
-                  <button
-                    class="p-2 border rounded border-gray-300 hover:bg-gray-100"
-                    onclick="document.execCommand('justifyRight', false, null)"
-                  >
-                    <svg
-                      class="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M4 6h16M8 12h16M6 18h16"
-                      />
-                    </svg>
-                  </button>
-                </div>
-
-                <!-- Headings -->
-                <div class="flex space-x-1 flex-shrink-0">
-                  <button
-                    class="px-2 py-1 border rounded text-sm font-bold border-gray-300 hover:bg-gray-100"
-                    onclick="document.execCommand('formatBlock', false, 'h1')"
-                  >
-                    H1
-                  </button>
-                  <button
-                    class="px-2 py-1 border rounded text-sm font-bold border-gray-300 hover:bg-gray-100"
-                    onclick="document.execCommand('formatBlock', false, 'h2')"
-                  >
-                    H2
-                  </button>
-                </div>
-
-                <!-- Text Color -->
-                <div class="flex items-center space-x-1 flex-shrink-0">
-                  <input
-                    type="color"
-                    class="w-8 h-8 border border-gray-300 rounded cursor-pointer"
-                    onchange="document.execCommand('foreColor', false, this.value)"
-                  />
-                </div>
-
-                <!-- Font Family -->
-                <div class="flex items-center space-x-1 flex-shrink-0">
-                  <select
-                    class="px-2 py-1 border rounded text-sm border-gray-300 hover:bg-gray-100"
-                    onchange="document.execCommand('fontName', false, this.value)"
-                  >
-                    <option value="Arial">Arial</option>
-                    <option value="Times New Roman">Times New Roman</option>
-                    <option value="Courier New">Courier New</option>
-                    <option value="Georgia">Georgia</option>
-                    <option value="Verdana">Verdana</option>
-                    <option value="Helvetica">Helvetica</option>
-                  </select>
-                </div>
-
-                <!-- Font Size Controls -->
-                <div class="flex items-center space-x-1 flex-shrink-0">
-                  <button
-                    class="px-2 py-1 border rounded text-sm border-gray-300 hover:bg-gray-100"
-                    onclick="document.execCommand('fontSize', false, '1')"
-                    title="Decrease font size"
-                  >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
-                    </svg>
-                  </button>
-                  <button
-                    class="px-2 py-1 border rounded text-sm border-gray-300 hover:bg-gray-100"
-                    onclick="document.execCommand('fontSize', false, '7')"
-                    title="Increase font size"
-                  >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                    </svg>
-                  </button>
+        <div class="flex h-[calc(100vh-7.5rem)]">
+          <!-- Floating Control Sidebar -->
+          <EditorControlSidebar @toggle-panel="togglePanel" />
+          <!-- Right Sidebar Panel -->
+          <transition name="fade">
+            <div v-if="activePanel" class="mt-2 rounded-lg w-80 bg-white shadow-lg flex flex-col">
+              <div class="p-4 overflow-y-auto flex-1">
+                <VariablesList v-if="activePanel === 'variables'" @select="insertVariable" />
+                <div v-if="activePanel === 'templates'">
+                  <h3 class="font-semibold text-gray-800 mb-4">Templates</h3>
+                  <TemplatesList @select-template="handleSelectTemplate" />
                 </div>
               </div>
             </div>
-          </div>
-        </div>
+          </transition>
 
-        <!-- Editor Area -->
-        <div class="flex-1 overflow-y-auto">
-          <div class="p-4 w-full">
-            <div class="max-w-4xl mx-auto">
-              <!-- A4 Paper -->
-              <div
-                ref="editorRef"
-                contenteditable="true"
-                class="bg-white shadow-lg rounded-lg min-h-[297mm] max-w-[210mm] mx-auto p-16 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 relative"
-              >
-                <div>
-                  <p class="text-gray-500">
-                    Select a contract template to start editing...
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Right Sidebar - Contract Data -->
-      <div class="w-80 bg-white border-l border-gray-300 overflow-hidden flex flex-col">
-        <div class="p-4 overflow-y-auto flex-1">
-          <!-- Dynamic Variables -->
-          <div class="mt-6">
-            <h4 class="font-semibold text-gray-800 mb-3">Available Variables</h4>
-            <div class="space-y-2">
-              <div
-                v-for="variable in dynamicVariables"
-                :key="variable.key"
-                @click="insertVariable(variable.key)"
-                class="p-2 bg-gray-100 rounded cursor-pointer hover:bg-gray-200 text-sm transition-colors border border-transparent hover:border-gray-300"
-              >
-                <div class="flex items-center justify-between">
-                  <div>
-                    <code class="text-blue-600">{{ variable.syntax }}</code>
-                    <div class="text-xs text-gray-500">{{ variable.description }}</div>
-                  </div>
+          <!-- Editor Area -->
+          <div class="flex-1 overflow-y-auto pt-20">
+            <div class="w-full">
+              <div class="max-w-4xl mx-auto">
+                <!-- A4 Paper -->
+                <div
+                  ref="editorPageRef"
+                  class="bg-white shadow-lg min-h-[297mm] max-w-[210mm] mx-auto p-16"
+                >
+                  <EditorContent :editor="editor" class="prose max-w-none" />
                 </div>
               </div>
             </div>
@@ -415,122 +69,51 @@
         </div>
       </div>
     </div>
+    
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from "vue";
-import axios from "axios";
 import UserProfileModal from "@/components/UserProfileModal.vue";
 import { useAuthStore } from "../store/authStore";
+import { storeToRefs } from "pinia";
+import StarterKit from "@tiptap/starter-kit";
+import TextAlign from "@tiptap/extension-text-align";
+import Underline from "@tiptap/extension-underline";
+import Color from "@tiptap/extension-color";
+import TextStyle from "@tiptap/extension-text-style";
+import EditorToolbar from "@/components/EditorToolbar.vue";
+import { Variable } from "@/extensions/VariableNode";
+import VariablesList from "@/components/VariablesList.vue";
+import TemplatesList from "@/components/TemplatesList.vue";
+import EditorControlSidebar from "@/components/EditorControlSidebar.vue";
+import { useVariablesStore } from "@/store/variablesStore";
+import { useCompanyStore } from "@/store/companyStore";
+import { useTemplateStore } from "@/store/templateStore";
+import { useEditorStore } from "@/store/editorStore";
+import { Download } from "lucide-vue-next";
+import { useEditor, EditorContent } from "@tiptap/vue-3";
+import axios from "axios";
+import html2canvas from "html2canvas";
+import { useTypeStore } from "@/store/typeStore";
+import { useRoute } from "vue-router";
 
-// Types
-interface User {
-  id: number;
-  name: string;
-  email: string;
-  phone: string;
-  department: {
-    department_name: string;
-  };
-  department_id: number;
-  created_at: string;
-  updated_at: string;
-}
-
-interface Department {
-  id: number;
-  department_name: string;
-  description?: string;
-}
-
-interface DynamicVariable {
-  key: string;
-  syntax: string;
-  description: string;
-}
-
-interface Column {
-  key: string;
-  label: string;
-}
-
-interface CurrentUser {
-  id: number;
-  name: string;
-  email: string;
-  profile_image?: string;
-}
-
-// Reactive state
-const editorRef = ref<HTMLElement | null>(null);
-const departmentDropdownOpen = ref<boolean>(true);
-const columnDropdownOpen = ref<boolean>(true);
-const selectedDepartments = ref<number[]>([]);
-const selectedColumns = ref<string[]>(["name", "email"]);
-const searchQuery = ref<string>("");
-const selectedUser = ref<User | null>(null);
+const editorPageRef = ref<HTMLElement | null>(null);
 const userModalOpen = ref<boolean>(false);
+
 const authStore = useAuthStore();
+const variablesStore = useVariablesStore();
+const companyStore = useCompanyStore();
+const templateStore = useTemplateStore();
+const editorStore = useEditorStore();
+const typeStore = useTypeStore();
+const route = useRoute();
 
-// Data
-const departments = ref<Department[]>([]);
-const allUsers = ref<User[]>([]);
+const { activePanel } = storeToRefs(editorStore);
+const { togglePanel } = editorStore;
 
-const dynamicVariables = ref<DynamicVariable[]>([
-  { key: "employee_name", syntax: "{employee_name}", description: "Selected user name" },
-  {
-    key: "employee_email",
-    syntax: "{employee_email}",
-    description: "Selected user email",
-  },
-  {
-    key: "employee_department",
-    syntax: "{employee_department}",
-    description: "Selected user department",
-  },
-  {
-    key: "employee_position",
-    syntax: "{employee_position}",
-    description: "Selected user position",
-  },
-  { key: "company_name", syntax: "{company_name}", description: "Company name" },
-  { key: "current_date", syntax: "{current_date}", description: "Current date" },
-  { key: "start_date", syntax: "{start_date}", description: "Contract start date" },
-]);
-
-const availableColumns = ref<Column[]>([
-  { key: "name", label: "Name" },
-  { key: "email", label: "Email" },
-  { key: "phone", label: "Phone" },
-]);
-
-// Computed
-const filteredUsers = computed(() => {
-  let users = [...allUsers.value];
-
-  // Filter by department
-  if (selectedDepartments.value.length > 0) {
-    users = users.filter((user) =>
-      selectedDepartments.value.includes(user.department_id)
-    );
-  }
-
-  // Search in all available columns
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase();
-    users = users.filter((user) => {
-      return (
-        user.name.toLowerCase().includes(query) ||
-        user.email.toLowerCase().includes(query) ||
-        user.phone.toLowerCase().includes(query)
-      );
-    });
-  }
-
-  return users;
-});
-
+// Split name user to get first characters
 const userInitials = computed(() => {
   const name = authStore.user?.name || "";
   return name
@@ -539,76 +122,195 @@ const userInitials = computed(() => {
     .join("")
     .toUpperCase();
 });
+// Reactive state
+const editor = useEditor({
+  content: "",
+  extensions: [
+    StarterKit,
+    Underline,
+    TextStyle,
+    Color,
+    TextAlign.configure({
+      types: ["heading", "paragraph"],
+    }),
+    Variable.configure({
+      HTMLAttributes: {
+        class: "variable-node",
+      },
+      getVariables: () => variablesStore.variables,
+    }),
+  ],
+  onUpdate: ({ editor }) => {
+    // Save content to localStorage whenever it changes
+    localStorage.setItem("editorContent", JSON.stringify(editor.getJSON()));
+  },
+});
 
-// Methods
-const toggleDepartmentDropdown = () => {
-  departmentDropdownOpen.value = !departmentDropdownOpen.value;
-};
-
-const toggleColumnDropdown = () => {
-  columnDropdownOpen.value = !columnDropdownOpen.value;
-};
-
-const filterUsers = () => {
-  // Filtering is handled by computed property
-};
-
-const selectUser = (user: User) => {
-  selectedUser.value = user;
-};
-
-const insertVariable = (variableKey: string) => {
-  const syntax = `{${variableKey}}`;
-  if (editorRef.value) {
-    editorRef.value.focus();
-    document.execCommand("insertText", false, syntax);
+const handleSelectTemplate = (templateId: number) => {
+  const template = templateStore.templates.find(el => el.id === templateId);
+  const content_json = JSON.parse(template?.content_json);
+  
+  
+  if(editor.value) {
+    editor.value.commands.setContent(content_json);
   }
 };
 
-const exportToPDF = async () => {
-  alert("PDF export functionality - would integrate html2canvas + jsPDF here");
+
+const insertVariable = (variable: { key: string; label: string }) => {
+  if (editor.value) {
+    editor.value.commands.insertVariable({
+      key: variable.key,
+      label: variable.label,
+    });
+  }
 };
 
-// Fetch departments from API
-const fetchDepartments = async () => {
+const saveEditorContent = async () => {
+  if (!editorPageRef.value || !editor.value || !companyStore.company?.id) {
+    alert("Some required information is missing to save the content.");
+    return;
+  }
+
   try {
-    const response = await axios.get("/department");
-    departments.value = response.data.departments;
-  } catch (error) {
-    console.error("Error fetching departments:", error);
+    const jsonContent = editor.value.getJSON();
+    const canvas = await html2canvas(editorPageRef.value, { scale: 0.5 });
+    const imageDataUrl = canvas.toDataURL("image/png");
+
+    const fetchResponse = await fetch(imageDataUrl);
+    const imageBlob = await fetchResponse.blob();
+    const imageFile = new File([imageBlob], "template_thumbnail.png", { type: "image/png" });
+
+    const formData = new FormData();
+    formData.append("content_json", JSON.stringify(jsonContent));
+    formData.append("company_id", String(companyStore.company.id));
+    formData.append("type_id", String(route.params.type_id));
+    formData.append("image", imageFile);
+
+    const response = await axios.post("/template/save", formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+
+    if(response.status === 200) {
+      templateStore.getTemplatesCompany();
+    }
+  } catch (error: any) {
+    const errorMessage = error.response?.data?.message || error.message;
+    console.log(errorMessage);
   }
 };
 
-// Fetch users from API
-const fetchUsers = async () => {
-  try {
-    const response = await axios.get("/users");
-    allUsers.value = response.data.users;
-  } catch (error) {
-    console.error("Error fetching users:", error);
+onMounted(async () => {
+  if (variablesStore.variables.length === 0) {
+    variablesStore.fetchVariables();
   }
-};
+  await companyStore.getCompany();
 
-// Initialize
-onMounted(() => {
-  fetchDepartments();
-  fetchUsers();
+  // If templateId is present in route, load that template
+  const templateId = route.params.templateId;
+  if (templateId && editor.value) {
+    const template = templateStore.templates.find(el => el.id === Number(templateId));
+    if (template && template.content_json) {
+      try {
+        const json = JSON.parse(template.content_json);
+        editor.value.commands.setContent(json);
+      } catch (error) {
+        editor.value.commands.setContent(template.content_json);
+      }
+    }
+  } else {
+    // Fallback to localStorage
+    const savedContent = localStorage.getItem("editorContent");
+    if (savedContent && editor.value) {
+      try {
+        const json = JSON.parse(savedContent);
+        editor.value.commands.setContent(json);
+      } catch (error) {
+        editor.value.commands.setContent(savedContent);
+      }
+    }
+  }
+});
+
+onUnmounted(() => {
+  editor.value?.destroy();
 });
 </script>
 
-<style scoped>
-/* Custom styles */
-[contenteditable]:focus {
+<style>
+.ProseMirror {
   outline: none;
+  min-height: 200px;
 }
 
-.variable-tag {
-  display: inline-block;
-  user-select: none;
-  cursor: default;
+.variable-node {
+  background-color: #dcfce7;
+  padding: 2px 4px;
+  border-radius: 4px;
+  color: #00c951;
+  font-family: monospace;
 }
 
-.variable-tag:hover {
-  @apply bg-blue-200;
+.ProseMirror p {
+  margin: 1em 0;
+}
+
+.ProseMirror h1 {
+  font-size: 2em;
+  margin: 0.67em 0;
+}
+
+.ProseMirror h2 {
+  font-size: 1.5em;
+  margin: 0.83em 0;
+}
+
+.ProseMirror ul,
+.ProseMirror ol {
+  padding: 0 1em;
+}
+
+.ProseMirror code {
+  background-color: #f1f1f1;
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+}
+
+.ProseMirror pre {
+  background: #0d0d0d;
+  color: #fff;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+}
+
+.ProseMirror pre code {
+  color: inherit;
+  padding: 0;
+  background: none;
+  font-size: 0.8rem;
+}
+
+.ProseMirror blockquote {
+  padding-left: 1rem;
+  border-left: 2px solid #ddd;
+}
+
+.ProseMirror hr {
+  border: none;
+  border-top: 2px solid #ddd;
+  margin: 2rem 0;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.1s;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 </style>
+
