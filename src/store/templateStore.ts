@@ -1,21 +1,9 @@
 import { defineStore } from 'pinia';
 import axios from 'axios';
 import { useCompanyStore } from './companyStore';
-
-export interface Template {
-  id: number;
-  content_json: any;
-  image: string;
-  company_id: number;
-  created_at: string;
-  updated_at: string;
-}
-
-interface TemplateStoreState {
-  templates: Template[];
-  loading: boolean;
-  error: string | null;
-}
+import { TemplateStoreState, Template } from '@/types/template';
+import { useTypeStore } from "@/store/typeStore";
+import { useRoute } from "vue-router";
 
 export const useTemplateStore = defineStore('template', {
   state: (): TemplateStoreState => ({
@@ -24,7 +12,44 @@ export const useTemplateStore = defineStore('template', {
     error: null,
   }),
   actions: {
-    async getTemplates() {
+    async getTemplatesCompanyWithType() {
+      const companyStore = useCompanyStore();
+      const companyId = companyStore.company?.id;
+    
+      if (!companyId) {
+        this.error = "Company ID not found.";
+        return;
+      }
+
+      // Fetch templates filtered by type
+      const typeStore = useTypeStore();
+      const route = useRoute();
+      
+      const typeSlug = route.params.type;
+      if (!typeStore.types.length) {
+        await typeStore.getTypes();
+      }
+      const typeObj = typeStore.types.find(
+        (t) => t.title.toLowerCase() === String(typeSlug).toLowerCase()
+      );
+      if(!typeObj) return;
+
+      this.loading = true;
+      this.error = null;
+      try {
+
+        let url = `/company/templates/${companyId}/${typeObj.id}`;
+        const response = await axios.get(url);
+        
+        this.templates = response.data.templates;
+      } catch (error: any) {
+        this.error = error.response?.data?.message || error.message || "Failed to fetch templates.";
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async getTemplatesCompany() {
       const companyStore = useCompanyStore();
       const companyId = companyStore.company?.id;
     
@@ -36,7 +61,9 @@ export const useTemplateStore = defineStore('template', {
       this.loading = true;
       this.error = null;
       try {
-        const response = await axios.get(`/company/templates/${companyId}`);
+        let url = `/company/templates/${companyId}`;
+        const response = await axios.get(url);
+        
         this.templates = response.data.templates;
       } catch (error: any) {
         this.error = error.response?.data?.message || error.message || "Failed to fetch templates.";
@@ -44,7 +71,7 @@ export const useTemplateStore = defineStore('template', {
         this.loading = false;
       }
     },
-
+    
     async getTemplate(id: number): Promise<Template | null> {
       this.loading = true;
       this.error = null;

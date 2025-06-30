@@ -27,7 +27,7 @@ const router = createRouter({
             }
         },
         {
-            path: '/editor/:type',
+            path: '/editor/:type/:templateId?',
             name: 'Editor',
             component: () => import('../views/EditorView.vue'),
             meta: {
@@ -90,11 +90,6 @@ router.beforeEach(async (to, from, next) => {
         }
         
         try {
-            const response = await axios.get('/me')
-            const user = response.data.user
-            const role = user.role_id
-            authStore.setUser(user)
-            authStore.userRole = role
 
             const requiredRoles = to.meta.role as number[] | undefined
             if (requiredRoles && authStore.userRole !== null) {

@@ -31,29 +31,7 @@
       </div>
 
       <!-- Design Type Icons -->
-      <div class="flex justify-center space-x-6 mb-12">
-        <div
-          v-for="templateTypes in templateTypes"
-          :key="templateTypes.name"
-          class="flex flex-col items-center cursor-pointer group"
-          @click="selectTemplateTypes(templateTypes)"
-        >
-          <div
-            @click="chooseType(templateTypes)"
-            class="w-16 h-16 rounded-full flex items-center justify-center mb-2 shadow-lg transition-transform group-hover:scale-105 relative"
-            :style="{ backgroundColor: templateTypes.color }"
-          >
-            <component :is="templateTypes.icon" class="w-8 h-8 text-white" />
-            <span
-              v-if="templateTypes.badge"
-              class="absolute -top-1 -right-1 bg-purple-500 text-white text-xs px-1.5 py-0.5 rounded-full font-medium"
-            >
-              {{ templateTypes.badge }}
-            </span>
-          </div>
-          <span class="text-sm text-gray-700 font-medium">{{ templateTypes.name }}</span>
-        </div>
-      </div>
+      <TemplateTypesList />
     </header>
 
     <!-- Recent Templates Section -->
@@ -67,7 +45,6 @@
         </div>
 
         <div class="mt-8">
-          <h2 class="text-xl font-semibold text-gray-800 mb-4">Recent designs</h2>
 
           <!-- Loading state -->
           <div
@@ -98,12 +75,16 @@
 
           <!-- Designs Grid -->
           <div
-            v-else-if="templates.length > 0"
+            v-else-if="filteredTemplates.length > 0"
             class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6"
           >
-            <div
-              v-for="template in templates"
+            <RouterLink
+              v-for="template in filteredTemplates"
               :key="template.id"
+              :to="{
+                name: 'Editor',
+                params: { type: template.type.title.toLowerCase(), templateId: template.id }
+              }"
               class="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
             >
               <div class="aspect-[4/3] bg-gray-100 rounded-t-lg overflow-hidden relative">
@@ -116,13 +97,13 @@
               <div class="p-4">
                 <h3 class="font-medium text-gray-900 mb-1 truncate">Template</h3>
                 <div class="flex items-center text-sm text-gray-500">
-                  <FileTextIcon class="w-4 h-4 mr-1 text-cyan-500" />
-                  <span>Document</span>
+                  <component :is="getIconComponent(template.type.logo)" class="w-4 h-4 mr-1" :style="{ color: template.type.color }"></component>
+                  <span>{{ template.type.title }}</span>
                   <span class="mx-1">•</span>
                   <span>{{ new Date(template.updated_at).toLocaleDateString() }}</span>
                 </div>
               </div>
-            </div>
+            </RouterLink>
           </div>
 
           <!-- Empty state -->
@@ -140,52 +121,31 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from "vue";
-import { useRouter } from "vue-router";
+import { onMounted, computed } from "vue";
 import { useTemplateStore } from "@/store/templateStore";
 import { useCompanyStore } from "@/store/companyStore";
+import TemplateTypesList from "@/components/TemplateTypesList.vue";
 import {
   SearchIcon,
   ArrowRightIcon,
-  FileTextIcon,
-  ReceiptText,
   MoreHorizontalIcon,
-  FileUser,
 } from "lucide-vue-next";
+import * as icons from "lucide-vue-next";
 
-interface TemplateTypes {
-  name: string;
-  icon: any;
-  color: string;
-  badge?: string;
-}
-
-const router = useRouter();
 const templateStore = useTemplateStore();
 const companyStore = useCompanyStore();
 const templates = computed(() => templateStore.templates);
+const filteredTemplates = computed(() => templates.value.filter(t => t.type && t.type.title));
 const storageBaseUrl = import.meta.env.VITE_STORAGE_BASE_URL
 
-const templateTypes = ref<TemplateTypes[]>([
-  { name: "Document", icon: FileTextIcon, color: "#06b6d4" },
-  { name: "CV", icon: FileUser, color: "#10b981" },
-  { name: "Contrat", icon: ReceiptText, color: "#f97316" },
-]);
-
-const selectTemplateTypes = (templateTypes: TemplateTypes) => {
-  console.log("Design type selected:", templateTypes.name);
+const getIconComponent = (iconName: string) => {
+  const iconComponent = (icons as any)[iconName];
+  return iconComponent;
 };
-
-const chooseType = (templateTypes: TemplateTypes) => {
-  router.push({
-    name: "Editor",
-    params: { type: templateTypes.name.toLowerCase() },
-  });
-};
-
-onMounted(() => {
-  companyStore.getCompany();
-  templateStore.getTemplates();
+onMounted(async () => {
+  await companyStore.getCompany();
+  await templateStore.getTemplatesCompany();
+  console.log(templateStore.templates);
 });
 </script>
 

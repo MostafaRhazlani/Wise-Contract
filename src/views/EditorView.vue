@@ -1,13 +1,15 @@
 <template>
   <div class="bg-slate-100">
     <!-- Header with navigation -->
-    <div class="bg-green-400 p-2 flex justify-between items-center">
-      <div class="flex items-center gap-2">
-        <div class="w-10 h-10 rounded-full overflow-hidden">
-          <img class="object-cover w-full h-full" :src="companyStore.company?.company_logo" alt="" />
-        </div>
-        <h1 class="font-semibold text-white text-lg">{{ companyStore.company?.company_name }}</h1>
-      </div>
+    <div class="bg-green-400 p-2 flex justify-between items-center" @click="templateStore.getTemplatesCompany">
+        <RouterLink to="/">
+          <div class="flex items-center gap-2">
+              <div class="w-10 h-10 rounded-full overflow-hidden">
+                <img class="object-cover w-full h-full" :src="companyStore.company?.company_logo" alt="" />
+              </div>
+              <h1 class="font-semibold text-white text-lg">{{ companyStore.company?.company_name }}</h1>
+          </div>
+        </RouterLink>
       <div class="flex items-center space-x-4">
         <!-- Download Button -->
         <button title="donwload template" @click="saveEditorContent" class="ml-4 p-2 text-white rounded hover:bg-green-500 transition">
@@ -91,6 +93,8 @@ import { Download } from "lucide-vue-next";
 import { useEditor, EditorContent } from "@tiptap/vue-3";
 import axios from "axios";
 import html2canvas from "html2canvas";
+import { useTypeStore } from "@/store/typeStore";
+import { useRoute } from "vue-router";
 
 const editorPageRef = ref<HTMLElement | null>(null);
 const userModalOpen = ref<boolean>(false);
@@ -100,6 +104,8 @@ const variablesStore = useVariablesStore();
 const companyStore = useCompanyStore();
 const templateStore = useTemplateStore();
 const editorStore = useEditorStore();
+const typeStore = useTypeStore();
+const route = useRoute();
 
 const { activePanel } = storeToRefs(editorStore);
 const { togglePanel } = editorStore;
@@ -113,7 +119,6 @@ const userInitials = computed(() => {
     .join("")
     .toUpperCase();
 });
-
 // Reactive state
 const editor = useEditor({
   content: "",
@@ -138,8 +143,8 @@ const editor = useEditor({
   },
 });
 
-const handleSelectTemplate = async (templateId: number) => {
-  const template = await templateStore.getTemplate(templateId);
+const handleSelectTemplate = (templateId: number) => {
+  const template = templateStore.templates.find(el => el.id === templateId);
   const content_json = JSON.parse(template?.content_json);
   
   
@@ -163,12 +168,22 @@ const saveEditorContent = async () => {
     alert("Some required information is missing to save the content.");
     return;
   }
-  
+
+  // Get type slug from route and find type id
+  const typeSlug = route.params.type;
+  if (!typeStore.types.length) {
+    await typeStore.getTypes();
+  }
+  const typeObj = typeStore.types.find(
+    (t) => t.title.toLowerCase() === String(typeSlug).toLowerCase()
+  );
+  if (!typeObj) return;
+
   try {
     const jsonContent = editor.value.getJSON();
     const canvas = await html2canvas(editorPageRef.value, { scale: 0.5 });
     const imageDataUrl = canvas.toDataURL("image/png");
-    
+
     const fetchResponse = await fetch(imageDataUrl);
     const imageBlob = await fetchResponse.blob();
     const imageFile = new File([imageBlob], "template_thumbnail.png", { type: "image/png" });
@@ -176,6 +191,7 @@ const saveEditorContent = async () => {
     const formData = new FormData();
     formData.append("content_json", JSON.stringify(jsonContent));
     formData.append("company_id", String(companyStore.company.id));
+    formData.append("type_id", String(typeObj.id));
     formData.append("image", imageFile);
 
     const response = await axios.post("/template/save", formData, {
@@ -183,8 +199,9 @@ const saveEditorContent = async () => {
         'Content-Type': 'multipart/form-data'
       }
     });
-    
+
     if(response.status === 200) {
+      templateStore.getTemplatesCompanyWithType();
       alert('Content saved successfully');
     }
   } catch (error: any) {
@@ -193,26 +210,36 @@ const saveEditorContent = async () => {
   }
 };
 
-onMounted(() => {
+onMounted(async () => {
   if (variablesStore.variables.length === 0) {
     variablesStore.fetchVariables();
   }
-  const savedContent = localStorage.getItem("editorContent");
-  // console.log(savedContent);
-  
-  if (savedContent && editor.value) {
-    try {
-      // parse as JSON
-      const json = JSON.parse(savedContent);
-      editor.value.commands.setContent(json);
+  await companyStore.getCompany();
 
-    } catch (error) {
-      // Fallback to HTML if not json
-      editor.value.commands.setContent(savedContent);
-      
+  // If templateId is present in route, load that template
+  const templateId = route.params.templateId;
+  if (templateId && editor.value) {
+    const template = templateStore.templates.find(el => el.id === Number(templateId));
+    if (template && template.content_json) {
+      try {
+        const json = JSON.parse(template.content_json);
+        editor.value.commands.setContent(json);
+      } catch (error) {
+        editor.value.commands.setContent(template.content_json);
+      }
+    }
+  } else {
+    // Fallback to localStorage
+    const savedContent = localStorage.getItem("editorContent");
+    if (savedContent && editor.value) {
+      try {
+        const json = JSON.parse(savedContent);
+        editor.value.commands.setContent(json);
+      } catch (error) {
+        editor.value.commands.setContent(savedContent);
+      }
     }
   }
-  companyStore.getCompany();
 });
 
 onUnmounted(() => {
@@ -294,3 +321,4 @@ onUnmounted(() => {
   opacity: 0;
 }
 </style>
+

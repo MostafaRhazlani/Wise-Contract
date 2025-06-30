@@ -1,20 +1,8 @@
 import { defineStore } from 'pinia'
 import axios from '../plugins/axios'
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-
-interface User {
-    id: number
-    name: string
-    email: string
-    role: string
-}
-
-interface ValidationErrors {
-    email?: string[]
-    password?: string[]
-    incorrectField?: string[]
-}
+import { User, ValidationErrors } from '@/types/user'
 
 export const useAuthStore = defineStore('auth', () => {
     const token = ref<string | null>(localStorage.getItem('token'))

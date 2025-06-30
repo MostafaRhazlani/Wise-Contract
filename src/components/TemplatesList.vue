@@ -29,8 +29,6 @@ const templateStore = useTemplateStore();
 const storageBaseUrl = import.meta.env.VITE_STORAGE_BASE_URL
 
 onMounted(() => {
-  if (templateStore.templates.length === 0) {
-    templateStore.getTemplates();
-  }
+  templateStore.getTemplatesCompanyWithType();
 });
 </script> 
