@@ -75,12 +75,16 @@
 
           <!-- Designs Grid -->
           <div
-            v-else-if="templates.length > 0"
+            v-else-if="filteredTemplates.length > 0"
             class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6"
           >
-            <div
-              v-for="template in templates"
+            <RouterLink
+              v-for="template in filteredTemplates"
               :key="template.id"
+              :to="{
+                name: 'Editor',
+                params: { type: template.type.title.toLowerCase(), templateId: template.id }
+              }"
               class="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
             >
               <div class="aspect-[4/3] bg-gray-100 rounded-t-lg overflow-hidden relative">
@@ -93,13 +97,13 @@
               <div class="p-4">
                 <h3 class="font-medium text-gray-900 mb-1 truncate">Template</h3>
                 <div class="flex items-center text-sm text-gray-500">
-                  <FileTextIcon class="w-4 h-4 mr-1 text-cyan-500" />
-                  <span>Document</span>
+                  <component :is="getIconComponent(template.type.logo)" class="w-4 h-4 mr-1" :style="{ color: template.type.color }"></component>
+                  <span>{{ template.type.title }}</span>
                   <span class="mx-1">•</span>
                   <span>{{ new Date(template.updated_at).toLocaleDateString() }}</span>
                 </div>
               </div>
-            </div>
+            </RouterLink>
           </div>
 
           <!-- Empty state -->
@@ -117,27 +121,31 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from "vue";
-import { useRouter } from "vue-router";
+import { onMounted, computed } from "vue";
 import { useTemplateStore } from "@/store/templateStore";
 import { useCompanyStore } from "@/store/companyStore";
 import TemplateTypesList from "@/components/TemplateTypesList.vue";
 import {
   SearchIcon,
   ArrowRightIcon,
-  FileTextIcon,
   MoreHorizontalIcon,
 } from "lucide-vue-next";
+import * as icons from "lucide-vue-next";
 
-const router = useRouter();
 const templateStore = useTemplateStore();
 const companyStore = useCompanyStore();
 const templates = computed(() => templateStore.templates);
+const filteredTemplates = computed(() => templates.value.filter(t => t.type && t.type.title));
 const storageBaseUrl = import.meta.env.VITE_STORAGE_BASE_URL
 
-onMounted(() => {
-  companyStore.getCompany();
-  templateStore.getTemplates();
+const getIconComponent = (iconName: string) => {
+  const iconComponent = (icons as any)[iconName];
+  return iconComponent;
+};
+onMounted(async () => {
+  await companyStore.getCompany();
+  await templateStore.getTemplatesCompany();
+  console.log(templateStore.templates);
 });
 </script>
 

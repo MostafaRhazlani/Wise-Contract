@@ -1,7 +1,7 @@
 <template>
   <div class="bg-slate-100">
     <!-- Header with navigation -->
-    <div class="bg-green-400 p-2 flex justify-between items-center">
+    <div class="bg-green-400 p-2 flex justify-between items-center" @click="templateStore.getTemplatesCompany">
         <RouterLink to="/">
           <div class="flex items-center gap-2">
               <div class="w-10 h-10 rounded-full overflow-hidden">
@@ -119,7 +119,6 @@ const userInitials = computed(() => {
     .join("")
     .toUpperCase();
 });
-
 // Reactive state
 const editor = useEditor({
   content: "",
@@ -144,8 +143,8 @@ const editor = useEditor({
   },
 });
 
-const handleSelectTemplate = async (templateId: number) => {
-  const template = await templateStore.getTemplate(templateId);
+const handleSelectTemplate = (templateId: number) => {
+  const template = templateStore.templates.find(el => el.id === templateId);
   const content_json = JSON.parse(template?.content_json);
   
   
@@ -202,7 +201,7 @@ const saveEditorContent = async () => {
     });
 
     if(response.status === 200) {
-      templateStore.getTemplates();
+      templateStore.getTemplatesCompanyWithType();
       alert('Content saved successfully');
     }
   } catch (error: any) {
@@ -211,26 +210,36 @@ const saveEditorContent = async () => {
   }
 };
 
-onMounted(() => {
+onMounted(async () => {
   if (variablesStore.variables.length === 0) {
     variablesStore.fetchVariables();
   }
-  const savedContent = localStorage.getItem("editorContent");
-  // console.log(savedContent);
-  
-  if (savedContent && editor.value) {
-    try {
-      // parse as JSON
-      const json = JSON.parse(savedContent);
-      editor.value.commands.setContent(json);
+  await companyStore.getCompany();
 
-    } catch (error) {
-      // Fallback to HTML if not json
-      editor.value.commands.setContent(savedContent);
-      
+  // If templateId is present in route, load that template
+  const templateId = route.params.templateId;
+  if (templateId && editor.value) {
+    const template = templateStore.templates.find(el => el.id === Number(templateId));
+    if (template && template.content_json) {
+      try {
+        const json = JSON.parse(template.content_json);
+        editor.value.commands.setContent(json);
+      } catch (error) {
+        editor.value.commands.setContent(template.content_json);
+      }
+    }
+  } else {
+    // Fallback to localStorage
+    const savedContent = localStorage.getItem("editorContent");
+    if (savedContent && editor.value) {
+      try {
+        const json = JSON.parse(savedContent);
+        editor.value.commands.setContent(json);
+      } catch (error) {
+        editor.value.commands.setContent(savedContent);
+      }
     }
   }
-  companyStore.getCompany();
 });
 
 onUnmounted(() => {
@@ -312,3 +321,4 @@ onUnmounted(() => {
   opacity: 0;
 }
 </style>
+
