@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   Building2,
   Users,
+  FileJson2,
 } from "lucide-vue-next";
 
 interface SidebarItem {
@@ -73,6 +74,13 @@ const managerDashboardItems = computed(() => {
     active: route.path === item.route
   }));
 });
+const SidebarDeveloper = computed(() => [
+  { name: "Variable", icon: FileJson2, route: "/developer/variable" },
+
+].map(item => ({
+  ...item,
+  active: route.path === item.route
+})));
 
 // Initial active state
 onMounted(() => {
@@ -128,6 +136,26 @@ const handleClickOutside = (event: Event) => {
           </div>
         </div>
       </template>
+
+      <!-- Developer Sidebar -->
+       <template v-else-if="authStore.userRole === 5">
+        <div class="px-3 py-2 mt-4">
+          <span v-if="sidebarExpanded" class="text-xs font-semibold text-gray-500 uppercase">Developer</span>
+        </div>
+        <div v-for="item in SidebarDeveloper" :key="item.name"
+          class="flex items-center cursor-pointer group transition-all duration-200 ease-in-out mx-2 rounded-lg hover:bg-gray-50"
+          :class="{ 'bg-green-50': item.active }" @click="setActiveItem(item)">
+          <div class="flex items-center w-full p-3">
+            <component :is="item.icon" class="w-6 h-6 flex-shrink-0 transition-colors duration-200"
+              :class="item.active ? 'text-green-600' : 'text-gray-600 group-hover:text-green-600'" />
+            <span v-if="sidebarExpanded" class="ml-3 text-sm font-medium transition-all duration-200"
+              :class="item.active ? 'text-green-600' : 'text-gray-700 group-hover:text-green-600'">
+              {{ item.name }}
+            </span>
+          </div>
+        </div>
+      </template>
+
       <template v-else>
         <div v-for="item in sidebarItems" :key="item.name"
           class="flex items-center cursor-pointer group transition-all duration-200 ease-in-out mx-2 rounded-lg hover:bg-gray-50"
