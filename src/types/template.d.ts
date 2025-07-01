@@ -1,5 +1,6 @@
 export interface Template {
     id: number;
+    title: string;
     content_json: any;
     image: string;
     company_id: number;
