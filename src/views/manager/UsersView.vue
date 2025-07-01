@@ -32,8 +32,13 @@
                 </div>
               </template>
               <template #default>
-                <img :src="scope.row.avatar" :alt="scope.row.name" class="h-10 w-10 rounded-full mr-3" />
-                <div>
+                <div class="min-w-10 max-w-10 min-h-10 max-h-10 rounded-full overflow-hidden mr-3">
+                  <div v-if="!scope.row.avatar" :style="{ backgroundColor: getColorFromName() }" class="h-10 w-10 flex items-center justify-center font-bold text-lg text-white">
+                    {{ getInitials(scope.row.name) }}
+                  </div>
+                  <img v-else :src="scope.row.avatar" :alt="scope.row.name" class="h-full w-full" />
+                </div>
+                <div class="min-w-96">
                   <div class="text-sm font-medium text-gray-900">{{ scope.row.name }}</div>
                   <div class="text-sm text-gray-500">{{ scope.row.email }}</div>
                 </div>
@@ -56,7 +61,7 @@
               <el-skeleton-item variant="text" style="width: 60%; margin: 0 auto" />
             </template>
             <template #default>
-              <span>{{ scope.row.department }}</span>
+              <span>{{ scope.row.department.department_name }}</span>
             </template>
           </el-skeleton>
         </template>
@@ -74,7 +79,7 @@
               <el-skeleton-item variant="text" style="width: 70%; margin: 0 auto" />
             </template>
             <template #default>
-              <span>{{ scope.row.post }}</span>
+              <span>{{ scope.row.post.title }}</span>
             </template>
           </el-skeleton>
         </template>
@@ -149,7 +154,6 @@
     <TemplateModal 
       v-model="uploadModalVisible"
       :user="selectedUser"
-      @generate="handleGenerate"
     />
   </div>
 </template>
@@ -184,12 +188,7 @@ onMounted(async () => {
   try {
     const response = await axios.get("/users");
     // Map backend data to fit your table structure
-    users.value = response.data.users.map((user: any) => ({
-      ...user,
-      department: user.department ? user.department.department_name : "",
-      post: user.post ? user.post.title : "",
-      avatar: user.avatar || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23D1D5DB'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/%3E%3C/svg%3E",
-    }));
+    users.value = response.data.users;
   } catch (error) {
     console.error("Failed to fetch users", error);
     ElMessage.error("Failed to load users");
@@ -209,15 +208,31 @@ function deleteUser(user: User) {
 function uploadFile(user: User) {
   selectedUser.value = user;
   uploadModalVisible.value = true;
+  
 }
 
-function handleGenerate(templateId: string, user: User) {
-  uploadModalVisible.value = false;
-  selectedUser.value = null;
+function getInitials(name: string): string {
+  if (!name) return '';
+  const words = name.trim().split(' ');
+  if (words.length === 1) return words[0][0].toUpperCase();
+  return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+}
+
+function getColorFromName(): string {
+  
+  let r = Math.floor(Math.random() * 255);
+  let g = Math.floor(Math.random() * 255);
+  let b = Math.floor(Math.random() * 255);
+  const rgb = [r, g, b];
+
+  // Generate color
+  const color = `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+  
+  return color;
 }
 </script>
 
-<style scoped>
+<style scope.rowd>
 .el-table {
   border-radius: 0.75rem;
   overflow: hidden;
@@ -225,11 +240,10 @@ function handleGenerate(templateId: string, user: User) {
 }
 
 .custom-header {
-  background: #bbf7d0 !important;
   color: #166534 !important;
   font-weight: 700;
   font-size: 0.95rem;
-  padding: 12px 8px !important;
+  padding: 12px 1px !important;
 }
 
 .custom-row {
@@ -240,7 +254,7 @@ function handleGenerate(templateId: string, user: User) {
   background: #bbf7d0;
   color: #166534;
   font-weight: 700;
-  border-bottom: 2px solid #a7f3d0;
+  border-bottom: 1px solid #a7f3d0;
 }
 
 .el-table td {
