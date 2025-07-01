@@ -75,6 +75,17 @@ const router = createRouter({
                 showSidebar: true,
                 showHeader: true
             }
+        },
+         {
+            path: '/developer/variable',
+            name: 'Variable',
+            component: () => import('../views/developer/VariableView.vue'),
+            meta: {
+                requiresAuth: true,
+                role: [5],
+                showSidebar: true,
+                showHeader: true
+            }
         }
     ]
 })
