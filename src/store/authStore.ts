@@ -36,6 +36,8 @@ export const useAuthStore = defineStore('auth', () => {
                     router.push({ name: 'ManagerDashboard' })
                 } else if (response.data.user.role_id === 4) {
                     router.push({ name: 'Home' })
+                } else if (response.data.user.role_id === 5) {
+                    router.push({ name: 'Variable' })
                 }
             }
 
