@@ -49,7 +49,7 @@
           <!-- Loading state -->
           <div
             v-if="templateStore.loading"
-            class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6"
+            class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6"
           >
             <div
               v-for="n in 3"
@@ -76,22 +76,19 @@
           <!-- Designs Grid -->
           <div
             v-else-if="filteredTemplates.length > 0"
-            class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6"
+            class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6"
           >
-            <RouterLink
+            <div
               v-for="template in filteredTemplates"
               :key="template.id"
-              :to="{
-                name: 'Editor',
-                params: { type_id: template.type.id, templateId: template.id }
-              }"
-              class="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
+              @click="selectTemplate(template.type.id, template.id)"
+              class="bg-white rounded-lg cursor-pointer"
             >
-              <div class="aspect-[4/3] bg-gray-100 rounded-t-lg overflow-hidden relative">
+              <div class="bg-gray-200 hover:bg-gray-300 hover:transition-all hover:duration-300 px-12 pt-4 rounded-t-lg overflow-hidden h-48">
                 <img
                   :src="storageBaseUrl + template.image"
                   alt=""
-                  class="w-full h-full object-contain p-2 group-hover:scale-105 transition-transform duration-200"
+                  class="w-full h-full object-start"
                 />
               </div>
               <div class="p-4">
@@ -103,7 +100,7 @@
                   <span>{{ new Date(template.updated_at).toLocaleDateString() }}</span>
                 </div>
               </div>
-            </RouterLink>
+            </div>
           </div>
 
           <!-- Empty state -->
@@ -131,6 +128,7 @@ import {
   MoreHorizontalIcon,
 } from "lucide-vue-next";
 import * as icons from "lucide-vue-next";
+import router from "@/routes/routes";
 
 const templateStore = useTemplateStore();
 const companyStore = useCompanyStore();
@@ -142,6 +140,19 @@ const getIconComponent = (iconName: string) => {
   const iconComponent = (icons as any)[iconName];
   return iconComponent;
 };
+
+const selectTemplate = (type_id: number, template_id: number) => {
+  const template = templateStore.templates.find(el => el.id === template_id);
+  if (template?.content_json) {
+    const parse_json = JSON.parse(template?.content_json);
+    localStorage.setItem("editorContent", JSON.stringify(parse_json));
+    
+    router.push({
+      name: 'Editor',
+      params: { type_id: type_id }
+    })
+  }
+}
 onMounted(async () => {
   await companyStore.getCompany();
   await templateStore.getTemplatesCompany();

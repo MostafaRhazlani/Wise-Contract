@@ -1,7 +1,7 @@
 <template>
   <div class="bg-slate-100">
     <!-- Header with navigation -->
-    <div class="bg-green-400 p-2 flex justify-between items-center" @click="templateStore.getTemplatesCompany">
+    <div class="bg-green-400 p-2 flex justify-between items-center">
         <RouterLink to="/">
           <div class="flex items-center gap-2">
               <div class="w-10 h-10 rounded-full overflow-hidden">
@@ -55,13 +55,14 @@
           <!-- Editor Area -->
           <div class="flex-1 overflow-y-auto pt-20">
             <div class="w-full">
-              <div class="max-w-4xl mx-auto">
-                <!-- A4 Paper -->
-                <div
-                  ref="editorPageRef"
-                  class="bg-white shadow-lg min-h-[297mm] max-w-[210mm] mx-auto p-16"
-                >
-                  <EditorContent :editor="editor" class="prose max-w-none" />
+              <div class="max-w-4xl mx-auto w-4/2">
+                <div class="flex flex-col gap-8">
+                  <div class="bg-white shadow-lg min-h-[1122px] max-w-[793px] min-w-[793px] mx-auto p-16 overflow-hidden">
+                    <EditorContent
+                      :editor="editor"
+                      class="prose max-w-none"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -207,12 +208,13 @@ const saveEditorContent = async () => {
   }
 };
 
+// Add to onMounted
 onMounted(async () => {
   if (variablesStore.variables.length === 0) {
     variablesStore.fetchVariables();
   }
   await companyStore.getCompany();
-
+  
   const savedContent = localStorage.getItem("editorContent");
   if (savedContent && editor.value) {
     try {
