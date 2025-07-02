@@ -21,6 +21,9 @@ export const Variable = Node.create({
   name: 'variable',
   inline: true,
   group: 'inline',
+  atom: false,
+  draggable: false,
+  selectable: true,
   marks: '_',
 
   addOptions() {

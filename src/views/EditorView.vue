@@ -98,6 +98,7 @@ import axios from "axios";
 import html2canvas from "html2canvas";
 import { useTypeStore } from "@/store/typeStore";
 import { useRoute } from "vue-router";
+import router from "@/routes/routes";
 
 const editorPageRef = ref<HTMLElement | null>(null);
 const userModalOpen = ref<boolean>(false);
@@ -148,9 +149,13 @@ const editor = useEditor({
 
 const handleSelectTemplate = (templateId: number) => {
   const template = templateStore.templates.find(el => el.id === templateId);
+
   const content_json = JSON.parse(template?.content_json);
-  
-  
+  localStorage.setItem("editorContent", JSON.stringify(content_json));
+  router.push({
+    name: "Editor",
+    params: { type_id: template?.type_id } 
+  })
   if(editor.value) {
     editor.value.commands.setContent(content_json);
   }
@@ -208,28 +213,13 @@ onMounted(async () => {
   }
   await companyStore.getCompany();
 
-  // If templateId is present in route, load that template
-  const templateId = route.params.templateId;
-  if (templateId && editor.value) {
-    const template = templateStore.templates.find(el => el.id === Number(templateId));
-    if (template && template.content_json) {
-      try {
-        const json = JSON.parse(template.content_json);
-        editor.value.commands.setContent(json);
-      } catch (error) {
-        editor.value.commands.setContent(template.content_json);
-      }
-    }
-  } else {
-    // Fallback to localStorage
-    const savedContent = localStorage.getItem("editorContent");
-    if (savedContent && editor.value) {
-      try {
-        const json = JSON.parse(savedContent);
-        editor.value.commands.setContent(json);
-      } catch (error) {
-        editor.value.commands.setContent(savedContent);
-      }
+  const savedContent = localStorage.getItem("editorContent");
+  if (savedContent && editor.value) {
+    try {
+      const json = JSON.parse(savedContent);
+      editor.value.commands.setContent(json);
+    } catch (error) {
+      editor.value.commands.setContent(savedContent);
     }
   }
 });
@@ -247,10 +237,8 @@ onUnmounted(() => {
 
 .variable-node {
   background-color: #dcfce7;
-  padding: 2px 4px;
   border-radius: 4px;
-  color: #00c951;
-  font-family: monospace;
+  user-select: text;
 }
 
 .ProseMirror p {
@@ -311,6 +299,11 @@ onUnmounted(() => {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+.ProseMirror .variable-node.ProseMirror-selectednode {
+  outline: 2px solid #22d3ee;
+  background-color: #bbf7d0;
 }
 </style>
 
