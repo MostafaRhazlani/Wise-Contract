@@ -39,7 +39,7 @@
         <div class="flex h-[calc(100vh-7.5rem)]">
           <!-- Floating Control Sidebar -->
           <EditorControlSidebar @toggle-panel="togglePanel" />
-          <!-- Right Sidebar Panel -->
+          <!-- Left Sidebar Panel -->
           <transition name="fade">
             <div v-if="activePanel" class="mt-2 rounded-lg w-80 bg-white shadow-lg flex flex-col">
               <div class="p-4 overflow-y-auto flex-1">
@@ -153,10 +153,6 @@ const handleSelectTemplate = (templateId: number) => {
 
   const content_json = JSON.parse(template?.content_json);
   localStorage.setItem("editorContent", JSON.stringify(content_json));
-  router.push({
-    name: "Editor",
-    params: { type_id: template?.type_id } 
-  })
   if(editor.value) {
     editor.value.commands.setContent(content_json);
   }

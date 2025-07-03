@@ -18,7 +18,7 @@
         @click="$emit('select-template', template.id)" 
         :class="[
           'cursor-pointer transition-transform duration-700',
-          selectedTemplate === String(template.id) 
+          selectedTemplate === String(template.id)
             ? 'border-2 border-green-500 bg-green-50 rounded-lg p-1' : ''
         ]"
       >
@@ -31,7 +31,7 @@
         </div>
         
         <!-- Show template info when in modal -->
-        <div class="mt-2 text-center">
+        <div v-if="route.name === 'EditorUsers'" class="mt-2 text-center">
           <h4 class="font-medium text-sm truncate">{{ template.template_name || 'Untitled' }}</h4>
           <p class="text-xs text-gray-500">{{ getTypeName(template.type_id) }}</p>
         </div>
@@ -82,10 +82,11 @@ function getTypeName(typeId: number) {
 
 onMounted(async () => {
 
-  
   // Only load templates if not provided via props (not in modal)
-  if (!props.templates) {
+  if (templateStore.templates.length === 0) {
     await templateStore.getTemplatesCompanyWithType(Number(route.params.type_id));
   }
+    
+  // }
 });
 </script>
