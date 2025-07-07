@@ -57,7 +57,7 @@
             <div class="w-full">
               <div class="max-w-4xl mx-auto w-4/2">
                 <div class="flex flex-col gap-8">
-                  <div class="bg-white shadow-lg min-h-[1122px] max-w-[793px] min-w-[793px] mx-auto p-16 overflow-hidden">
+                  <div ref="editorPageRef" class="bg-white shadow-lg min-h-[1122px] max-w-[793px] min-w-[793px] mx-auto p-16 overflow-hidden">
                     <EditorContent
                       :editor="editor"
                       class="prose max-w-none"

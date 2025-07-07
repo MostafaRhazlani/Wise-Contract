@@ -1,5 +1,28 @@
 <template>
-  <el-dialog v-model="visible" title="Select Template" width="650px" align-center @close="handleClose">
+  <el-dialog 
+    v-model="visible" 
+    :title="modalTitle" 
+    :width="isMultiple ? '800px' : '650px'" 
+    align-center 
+    @close="handleClose"
+  >
+    <!-- Users List (only show for multiple uploads) -->
+    <div v-if="isMultiple && usersArray.length > 0" class="mb-6">
+      <h3 class="text-lg font-semibold mb-3">Selected Users ({{ usersArray.length }})</h3>
+      <div class="max-h-32 overflow-y-auto bg-gray-50 rounded-lg p-3">
+        <div class="flex flex-wrap gap-2">
+          <el-tag 
+            v-for="user in usersArray" 
+            :key="user.id"
+            type="info"
+            size="small"
+          >
+            {{ user.name }}
+          </el-tag>
+        </div>
+      </div>
+    </div>
+
     <!-- Filter by Type -->
     <div class="mb-6">
       <el-select v-model="selectedType" placeholder="Filter by type" style="width: 200px" @change="filterTemplates"
@@ -13,15 +36,30 @@
     <TemplatesList @select-template="selectTemplate" :selected-template="selectedTemplate"
       :templates="filteredTemplates" />
 
+    <!-- Progress Bar (only show for multiple uploads) -->
+    <div v-if="isMultiple && generating" class="mt-6">
+      <el-progress 
+        :percentage="progressPercentage" 
+        :status="progressStatus"
+        :stroke-width="8"
+      />
+      <p class="text-sm text-gray-600 mt-2">
+        {{ progressText }}
+      </p>
+    </div>
+
     <template #footer>
       <div class="dialog-footer">
-        <el-button type="info" @click="handleClose">Cancel</el-button>
+        <el-button type="info" @click="handleClose" :disabled="generating">
+          Cancel
+        </el-button>
         <el-button
           v-if="selectedTemplate"
           type="success"
           @click="generatePDF"
+          :loading="generating"
         >
-          Generate PDF
+          {{ buttonText }}
         </el-button>
       </div>
     </template>
@@ -55,14 +93,13 @@ import Highlight from '@tiptap/extension-highlight';
 import TextAlign from '@tiptap/extension-text-align';
 import Underline from '@tiptap/extension-underline';
 import { Variable } from '@/extensions/VariableNode';
-import { GripHorizontal } from 'lucide-vue-next';
 
 interface User {
   id: number;
   name: string;
   email: string;
-  department: string;
-  post: string;
+  department: any;
+  post: any;
   phone: string;
   avatar: string;
   join_date?: string;
@@ -74,25 +111,60 @@ interface User {
 const props = defineProps<{
   modelValue: boolean;
   user: User | null;
+  users?: User[];
+  isMultiple?: boolean;
 }>();
 
 // Emits
 const emit = defineEmits<{
   'update:modelValue': [value: boolean];
+  'contracts-generated': [count: number];
 }>();
 
 // Reactive data
 const selectedType = ref<number | string>('');
 const selectedTemplate = ref('');
 const generating = ref(false);
+const progressPercentage = ref(0);
+const progressStatus = ref<'success' | 'exception' | 'warning' | ''>('');
+const progressText = ref('');
 const pdfContentRef = ref<HTMLElement>();
 const templateStore = useTemplateStore();
 const typeStore = useTypeStore();
 
-// Computed
+// Computed properties
 const visible = computed({
   get: () => props.modelValue,
   set: (value) => emit('update:modelValue', value)
+});
+
+const isMultiple = computed(() => props.isMultiple || false);
+
+// Ensure usersArray is always an array
+const usersArray = computed(() => {
+  if (!props.users) {
+    console.warn('props.users is undefined');
+    return [];
+  }
+  if (!Array.isArray(props.users)) {
+    console.warn('props.users is not an array:', props.users);
+    return [];
+  }
+  return props.users;
+});
+
+const modalTitle = computed(() => {
+  if (isMultiple.value) {
+    return `Generate Contracts for ${usersArray.value.length} Users`;
+  }
+  return 'Select Template';
+});
+
+const buttonText = computed(() => {
+  if (isMultiple.value) {
+    return `Generate ${usersArray.value.length} PDF${usersArray.value.length > 1 ? 's' : ''}`;
+  }
+  return 'Generate PDF';
 });
 
 // Filter templates based on selected type
@@ -115,8 +187,16 @@ const availableTypes = computed(() => {
 // Watch for modal opening to load data and reset selections
 watch(() => props.modelValue, async (newValue) => {
   if (newValue) {
+    console.log('Modal opened');
+    console.log('isMultiple:', isMultiple.value);
+    console.log('usersArray:', usersArray.value);
+    console.log('props.users:', props.users);
+    
     selectedType.value = '';
     selectedTemplate.value = '';
+    progressPercentage.value = 0;
+    progressStatus.value = '';
+    progressText.value = '';
     await loadData();
   }
 });
@@ -152,12 +232,37 @@ function handleClose() {
   visible.value = false;
   selectedType.value = '';
   selectedTemplate.value = '';
+  generating.value = false;
+  progressPercentage.value = 0;
+  progressStatus.value = '';
+  progressText.value = '';
 }
 
+// Helper function to get value from object path
 function getValueByPath(obj: any, path: string): any {
-  return path.split('.').reduce((acc, key) => {
-    return acc && acc[key]
-  }, obj);
+  if (!path || !obj) return null;
+  
+  // Remove "user." prefix if it exists
+  const cleanPath = path.replace(/^user\./, '');
+  
+  // Handle direct properties first
+  if (obj[cleanPath] !== undefined) {
+    return obj[cleanPath];
+  }
+  
+  // Handle nested paths
+  const pathParts = cleanPath.split('.');
+  let current = obj;
+  
+  for (const part of pathParts) {
+    if (current && current[part] !== undefined) {
+      current = current[part];
+    } else {
+      return null;
+    }
+  }
+  
+  return current;
 }
 
 // Recursively replace variable nodes in Tiptap JSON
@@ -184,37 +289,38 @@ function replaceVariablesInJson(json: any, user: any): any {
   return json;
 }
 
-function generatePDF() {
-  const currentTemplate = templateStore.templates.find(template => String(template.id) === String(selectedTemplate.value));
-  if (!currentTemplate) {
-    ElMessage.error('No template selected');
-    return;
-  }
-
-  // Replace variables in the JSON
-  const contentJson = JSON.parse(currentTemplate.content_json);
-  
-  const replacedJson = replaceVariablesInJson(contentJson, { user: props.user });
-  
-  // Generate HTML from the replaced JSON
-  const html = generateHTML(replacedJson, [
-    StarterKit,
-    Color,
-    TextStyle,
-    Highlight,
-    TextAlign.configure({ types: ['heading', 'paragraph'] }),
-    Underline,
-    Variable
-  ]);
-
-  // Render the HTML into the hidden div
-  if (pdfContentRef.value) {
-    pdfContentRef.value.innerHTML = html;
-  }
-
-  setTimeout(async () => {
-    if (!pdfContentRef.value) return;
+// Generate PDF for single user
+async function generateSinglePDF(user: User, template: any): Promise<void> {
+  return new Promise(async (resolve, reject) => {
     try {
+      // Replace variables in the JSON
+      const contentJson = JSON.parse(template.content_json);
+      const replacedJson = replaceVariablesInJson(contentJson, user);
+      
+      // Generate HTML from the replaced JSON
+      const html = generateHTML(replacedJson, [
+        StarterKit,
+        Color,
+        TextStyle,
+        Highlight,
+        TextAlign.configure({ types: ['heading', 'paragraph'] }),
+        Underline,
+        Variable
+      ]);
+
+      // Render the HTML into the hidden div
+      if (pdfContentRef.value) {
+        pdfContentRef.value.innerHTML = html;
+      }
+
+      // Wait for content to render
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      if (!pdfContentRef.value) {
+        reject(new Error('PDF content container not found'));
+        return;
+      }
+
       const canvas = await html2canvas(pdfContentRef.value, { 
         scale: 2,
         useCORS: true,
@@ -231,8 +337,8 @@ function generatePDF() {
       });
 
       const imgData = canvas.toDataURL('image/png');
-      const imgWidth = 210; // A4 width in mm
-      const pageHeight = 295; // A4 height in mm
+      const imgWidth = 210;
+      const pageHeight = 295;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
       let heightLeft = imgHeight;
       let position = 0;
@@ -246,13 +352,122 @@ function generatePDF() {
         pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
         heightLeft -= pageHeight;
       }
-      pdf.save(`${currentTemplate.title || 'template'}.pdf`);
+
+      // Save PDF with user name
+      const fileName = isMultiple.value 
+        ? `${user.name.replace(/\s+/g, '_')}_${template.title || 'contract'}.pdf`
+        : `${template.title || 'template'}.pdf`;
+      
+      pdf.save(fileName);
+      resolve();
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+// Main generatePDF function (handles both single and multiple)
+async function generatePDF() {
+  const currentTemplate = templateStore.templates.find(template => 
+    String(template.id) === String(selectedTemplate.value)
+  );
+  
+  if (!currentTemplate) {
+    ElMessage.error('No template selected');
+    return;
+  }
+
+  if (isMultiple.value) {
+    // Multiple users generation
+    if (!usersArray.value.length) {
+      ElMessage.error('No users selected');
+      return;
+    }
+
+    console.log('Starting multiple PDF generation for:', usersArray.value.length, 'users');
+
+    generating.value = true;
+    progressPercentage.value = 0;
+    progressStatus.value = '';
+    progressText.value = 'Starting PDF generation...';
+
+    try {
+      let completed = 0;
+      let failed = 0;
+
+      for (let i = 0; i < usersArray.value.length; i++) {
+        const user = usersArray.value[i];
+        
+        try {
+          progressText.value = `Generating PDF for ${user.name}... (${i + 1}/${usersArray.value.length})`;
+          
+          await generateSinglePDF(user, currentTemplate);
+          completed++;
+          
+          // Update progress
+          progressPercentage.value = Math.round(((i + 1) / usersArray.value.length) * 100);
+          
+          // Small delay to prevent overwhelming the system
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+        } catch (error) {
+          console.error(`Failed to generate PDF for ${user.name}:`, error);
+          failed++;
+        }
+      }
+
+      // Show results
+      if (completed === usersArray.value.length) {
+        progressStatus.value = 'success';
+        progressText.value = `Successfully generated ${completed} PDF${completed > 1 ? 's' : ''}`;
+        ElMessage.success(`All ${completed} contracts generated successfully!`);
+      } else if (completed > 0) {
+        progressStatus.value = 'warning';
+        progressText.value = `Generated ${completed} PDF${completed > 1 ? 's' : ''}, ${failed} failed`;
+        ElMessage.warning(`${completed} contracts generated, ${failed} failed`);
+      } else {
+        progressStatus.value = 'exception';
+        progressText.value = 'All PDF generations failed';
+        ElMessage.error('Failed to generate any contracts');
+      }
+
+      // Emit success event
+      emit('contracts-generated', completed);
+      
+      // Auto-close after success
+      setTimeout(() => {
+        if (completed > 0) {
+          handleClose();
+        }
+      }, 2000);
+
+    } catch (error) {
+      console.error('Multiple PDF generation failed:', error);
+      progressStatus.value = 'exception';
+      progressText.value = 'PDF generation failed';
+      ElMessage.error('Failed to generate contracts');
+    } finally {
+      generating.value = false;
+    }
+  } else {
+    // Single user generation
+    if (!props.user) {
+      ElMessage.error('No user selected');
+      return;
+    }
+
+    try {
+      generating.value = true;
+      await generateSinglePDF(props.user, currentTemplate);
       ElMessage.success('PDF generated and downloaded!');
+      handleClose();
     } catch (error) {
       console.error('PDF generation failed:', error);
       ElMessage.error('Failed to generate PDF');
+    } finally {
+      generating.value = false;
     }
-  }, 100);
+  }
 }
 
 // Load data on component mount
@@ -285,6 +500,16 @@ onMounted(async () => {
 
 .el-select {
   margin-bottom: 16px;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.el-tag {
+  margin-bottom: 4px;
 }
 
 /* Card miniature styling */
