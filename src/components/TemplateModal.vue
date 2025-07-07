@@ -28,12 +28,8 @@
   </el-dialog>
 
   <!-- Hidden div for PDF content rendering -->
-  <div 
-    ref="pdfContentRef" 
-    id="pdf-content" 
-    style="position: absolute; left: -9999px; top: -9999px; width: 794px; background: white; padding: 40px; font-family: Arial, sans-serif; line-height: 1.6;"
-  >
-    <!-- PDF content will be inserted here -->
+  <div id="hide-content">
+    <div ref="pdfContentRef" id="pdf-content" class="p-6" ></div>
   </div>
 </template>
 
@@ -43,10 +39,7 @@ import { ref, computed, watch, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import { useTemplateStore } from '@/store/templateStore';
 import { useTypeStore } from '@/store/typeStore';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
-
-// Import Tiptap for JSON to HTML conversion
+import html2pdf from 'html2pdf.js';
 import { generateHTML } from '@tiptap/html';
 import StarterKit from '@tiptap/starter-kit';
 import { Color } from '@tiptap/extension-color';
@@ -55,7 +48,6 @@ import Highlight from '@tiptap/extension-highlight';
 import TextAlign from '@tiptap/extension-text-align';
 import Underline from '@tiptap/extension-underline';
 import { Variable } from '@/extensions/VariableNode';
-import { GripHorizontal } from 'lucide-vue-next';
 
 interface User {
   id: number;
@@ -84,7 +76,6 @@ const emit = defineEmits<{
 // Reactive data
 const selectedType = ref<number | string>('');
 const selectedTemplate = ref('');
-const generating = ref(false);
 const pdfContentRef = ref<HTMLElement>();
 const templateStore = useTemplateStore();
 const typeStore = useTypeStore();
@@ -165,22 +156,23 @@ function replaceVariablesInJson(json: any, user: any): any {
   if (Array.isArray(json)) {
     return json.map(item => replaceVariablesInJson(item, user));
   } else if (json && typeof json === 'object') {
+    const newObj: any = { ...json };
+    
     if (json.type === 'variable' && json.attrs?.label) {
       // Replace variable node with a text node containing the value
       const value = getValueByPath(user, json.attrs.label);
       return {
         type: 'text',
         text: value ?? `[${json.attrs.label}]`,
-        marks: json.marks
+        marks: json.marks,
       };
     }
-    // Recursively process children
-    const newObj: any = { ...json };
     if (json.content) {
       newObj.content = replaceVariablesInJson(json.content, user);
     }
     return newObj;
   }
+  
   return json;
 }
 
@@ -212,47 +204,27 @@ function generatePDF() {
     pdfContentRef.value.innerHTML = html;
   }
 
-  setTimeout(async () => {
     if (!pdfContentRef.value) return;
-    try {
-      const canvas = await html2canvas(pdfContentRef.value, { 
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff',
-        width: pdfContentRef.value.scrollWidth,
-        height: pdfContentRef.value.scrollHeight
+
+    const opt = {
+      margin:       0,
+      filename:     `${currentTemplate.title || 'template'}.pdf`,
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true, backgroundColor: '#fff' },
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+    
+    html2pdf()
+      .set(opt)
+      .from(pdfContentRef.value)
+      .save()
+      .then(() => {
+        ElMessage.success('PDF generated');
+      })
+      .catch((error: any) => {
+        console.error('PDF generation failed:', error);
+        ElMessage.error('Failed to generate PDF');
       });
-
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
-
-      const imgData = canvas.toDataURL('image/png');
-      const imgWidth = 210; // A4 width in mm
-      const pageHeight = 295; // A4 height in mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
-      pdf.save(`${currentTemplate.title || 'template'}.pdf`);
-      ElMessage.success('PDF generated and downloaded!');
-    } catch (error) {
-      console.error('PDF generation failed:', error);
-      ElMessage.error('Failed to generate PDF');
-    }
-  }, 100);
 }
 
 // Load data on component mount
@@ -261,7 +233,7 @@ onMounted(async () => {
 });
 </script>
 
-<style scoped>
+<style>
 /* Template card styling */
 .template-card {
   border: 2px solid transparent;
@@ -295,6 +267,13 @@ onMounted(async () => {
   border-radius: 4px;
 }
 
+#hide-content {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  visibility: visible;
+}
+
 /* PDF content styling */
 #pdf-content {
   font-family: Arial, sans-serif;
@@ -303,6 +282,16 @@ onMounted(async () => {
 #pdf-content h1, #pdf-content h2, #pdf-content h3 {
   margin-top: 20px;
   margin-bottom: 10px;
+}
+
+#pdf-content h1 {
+  font-size: 2em;
+  font-weight: bold;
+}
+
+#pdf-content h2 {
+  font-size: 1.5em;
+  font-weight: bold;
 }
 
 #pdf-content p {
