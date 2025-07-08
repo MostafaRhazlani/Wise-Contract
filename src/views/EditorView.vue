@@ -34,7 +34,7 @@
       <!-- Center area -->
       <div class="flex-1 flex flex-col transition-all duration-300">
         <!-- Toolbar -->
-        <EditorToolbar :editor="editors[0]" />
+        <EditorToolbar :editor="editors[activePageIndex]" />
 
         <div class="flex h-[calc(100vh-6.8rem)]">
           <!-- Floating Control Sidebar -->
@@ -58,18 +58,14 @@
               <div class="max-w-4xl mx-auto mb-10">
                 <div class="flex flex-col gap-8">
                   <div
+                    :ref="el => editorPageRefs[index] = el as HTMLElement | null"
                     v-for="(editor, index) in editors"
                     :key="index"
+                    v-show="index === activePageIndex"
                     class="flex justify-center"
                     :style="{ transform: `scale(${zoomLevel})`, transformOrigin: 'top center' }"
                   >
-                    <div
-                      class="bg-white shadow-lg min-h-[1122px] max-w-[793px] min-w-[793px] mx-auto p-16 overflow-hidden"
-                      ref="editorPageRef"
-                    >
-                      <EditorContent :editor="editor" class="prose max-w-none"
-                      />
-                    </div>
+                    <EditorPage :editor="editor" />
                   </div>
                 </div>
               </div>
@@ -77,11 +73,14 @@
             <!-- Page Controls Component -->
             <EditorPageControls
               :zoom="zoomLevel"
+              :pageCount="editors.length"
+              :currentPage="activePageIndex"
               @zoom-in="handleZoomIn"
               @zoom-out="handleZoomOut"
               @set-zoom="zoomLevel = $event"
               @add-page="handleAddPage"
               @fullscreen="handleFullscreen"
+              @select-page="handleSelectPage"
             />
           </div>
         </div>
@@ -96,13 +95,7 @@ import { ref, computed, onMounted, onUnmounted } from "vue";
 import UserProfileModal from "@/components/UserProfileModal.vue";
 import { useAuthStore } from "../store/authStore";
 import { storeToRefs } from "pinia";
-import StarterKit from "@tiptap/starter-kit";
-import TextAlign from "@tiptap/extension-text-align";
-import Underline from "@tiptap/extension-underline";
-import Color from "@tiptap/extension-color";
-import TextStyle from "@tiptap/extension-text-style";
 import EditorToolbar from "@/components/EditorToolbar.vue";
-import { Variable } from "@/extensions/VariableNode";
 import VariablesList from "@/components/VariablesList.vue";
 import TemplatesList from "@/components/TemplatesList.vue";
 import EditorControlSidebar from "@/components/EditorControlSidebar.vue";
@@ -111,14 +104,21 @@ import { useCompanyStore } from "@/store/companyStore";
 import { useTemplateStore } from "@/store/templateStore";
 import { useEditorStore } from "@/store/editorStore";
 import { Download } from "lucide-vue-next";
-import { useEditor, EditorContent, Editor } from "@tiptap/vue-3";
 import axios from "axios";
 import html2canvas from "html2canvas";
 import { useRoute } from "vue-router";
 import EditorPageControls from "@/components/EditorPageControls.vue";
+import EditorPage from "@/components/EditorPage.vue";
+import { Editor } from "@tiptap/vue-3";
+import StarterKit from "@tiptap/starter-kit";
+import TextAlign from "@tiptap/extension-text-align";
+import Underline from "@tiptap/extension-underline";
+import TextStyle from "@tiptap/extension-text-style";
+import Color from "@tiptap/extension-color";
+import { Variable } from "@/extensions/VariableNode";
 import type { Ref } from 'vue';
 
-const editorPageRef = ref<HTMLElement | null>(null);
+const editorPageRefs = ref<(HTMLElement | null)[]>([]);
 const userModalOpen = ref<boolean>(false);
 
 const authStore = useAuthStore();
@@ -127,15 +127,13 @@ const companyStore = useCompanyStore();
 const templateStore = useTemplateStore();
 const editorStore = useEditorStore();
 const route = useRoute();
-const editors: Ref<Editor[]> = ref([])
+
+const editors: Ref<Editor[]> = ref([]);
+const activePageIndex = ref(0);
 
 const { activePanel } = storeToRefs(editorStore);
 const { togglePanel } = editorStore;
 
-// const baseGap = 32;
-// const pageGap = computed(() => baseGap * zoomLevel.value);
-
-// Split name user to get first characters
 const userInitials = computed(() => {
   const name = authStore.user?.name || "";
   return name
@@ -145,48 +143,47 @@ const userInitials = computed(() => {
     .toUpperCase();
 });
 
-const  createEditor = (content = '') => {
-  return useEditor({
+function createEditor(content = '') {
+  return new Editor({
     content,
-    editable: true,
     extensions: [
       StarterKit,
       Underline,
       TextStyle,
       Color,
-      TextAlign.configure({
-        types: ["heading", "paragraph"],
-      }),
+      TextAlign.configure({ types: ["heading", "paragraph"] }),
       Variable.configure({
-        HTMLAttributes: {
-          class: "variable-node",
-        },
+        HTMLAttributes: { class: "variable-node" },
         getVariables: () => variablesStore.variables,
       }),
     ],
     onUpdate: ({ editor }) => {
-      const index = editors.value.findIndex(e => e === editor);
-      if (index !== -1) {
-        localStorage.setItem(`editorContent-${index}`, JSON.stringify(editor.getJSON()));
-      }
+      // Optionally, save content to localStorage or backend here
     },
   });
 }
 
+const handleAddPage = () => {
+  editors.value.push(createEditor());
+  activePageIndex.value = editors.value.length - 1;
+};
+
+const handleSelectPage = (index: number) => {
+  activePageIndex.value = index;
+};
+
 const handleSelectTemplate = (templateId: number) => {
   const template = templateStore.templates.find(el => el.id === templateId);
-
   const content_json = JSON.parse(template?.content_json);
   localStorage.setItem("editorContent", JSON.stringify(content_json));
-  if(editors.value[0]) {
-    editors.value[0]?.commands.setContent(content_json);
+  if (editors.value.length > 0) {
+    editors.value[activePageIndex.value].commands.setContent(content_json);
   }
 };
 
-
 const insertVariable = (variable: { key: string; label: string }) => {
-  if (editors.value[0]) {
-    editors.value[0]?.commands.insertVariable({
+  if (editors.value[activePageIndex.value]) {
+    editors.value[activePageIndex.value].commands.insertVariable({
       key: variable.key,
       label: variable.label,
     });
@@ -194,31 +191,35 @@ const insertVariable = (variable: { key: string; label: string }) => {
 };
 
 const saveEditorContent = async () => {
-  if (!editorPageRef.value || !editors.value[0] || !companyStore.company?.id) {
-    alert("Some required information is missing to save the content.");
-    return;
-  }
-
   try {
-    const jsonContent = editors.value[0]?.getJSON();
-    const canvas = await html2canvas(editorPageRef.value, { scale: 0.5 });
-    const imageDataUrl = canvas.toDataURL("image/png");
-
-    const fetchResponse = await fetch(imageDataUrl);
-    const imageBlob = await fetchResponse.blob();
-    const imageFile = new File([imageBlob], "template_thumbnail.png", { type: "image/png" });
-
     const formData = new FormData();
-    formData.append("content_json", JSON.stringify(jsonContent));
-    formData.append("company_id", String(companyStore.company.id));
+    formData.append("company_id", String(companyStore.company?.id));
     formData.append("type_id", String(route.params.type_id));
-    formData.append("image", imageFile);
+    
+    for (let i = 0; i < editors.value.length; i++) {
+      const editor = editors.value[i];
+      const jsonContent = editor.getJSON();
+      const el = editorPageRefs.value[i];
+      if (!el) continue;
+
+      const canvas = await html2canvas(el, { scale: 0.5 });
+      const imageDataUrl = canvas.toDataURL("image/png");
+      const fetchResponse = await fetch(imageDataUrl);
+      const imageBlob = await fetchResponse.blob();
+      const imageFile = new File([imageBlob], `template_thumbnail_${i + 1}.png`, { type: "image/png" });
+
+      formData.append('content_json[]', JSON.stringify(jsonContent));
+      formData.append('image_path[]', imageFile);
+      console.log("images: =>",imageFile);
+      console.log(jsonContent);
+    }
 
     const response = await axios.post("/template/save", formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
     });
+    console.log(response);
 
     if(response.status === 200) {
       templateStore.getTemplatesCompany();
@@ -229,14 +230,11 @@ const saveEditorContent = async () => {
   }
 };
 
-// Zoom and fullscreen state
 const zoomLevel = ref(1);
 const isFullscreen = ref(false);
 
 const handleZoomIn = () => {
   zoomLevel.value = Math.min(zoomLevel.value + 0.1, 2);
-  console.log(zoomLevel.value);
-  
 };
 const handleZoomOut = () => {
   zoomLevel.value = Math.max(zoomLevel.value - 0.1, 0.5);
@@ -255,32 +253,15 @@ const handleFullscreen = () => {
     isFullscreen.value = false;
   }
 };
-const handleAddPage = () => {
-  const newEditor = createEditor();
-  editors.value.push(newEditor.value!)
-};
 
-const firstEditor = createEditor();
-editors.value.push(firstEditor.value!);
-// Add to onMounted
-onMounted(async () => {
-  if (variablesStore.variables.length === 0) {
-    variablesStore.fetchVariables();
-  }
-  await companyStore.getCompany();
-  const savedContent = localStorage.getItem("editorContent");
-  if (savedContent && editors.value) {
-    try {
-      const json = JSON.parse(savedContent);
-      editors.value[0]?.commands.setContent(json);
-    } catch (error) {
-      editors.value[0]?.commands.setContent(savedContent);
-    }
+onMounted(() => {
+  if (editors.value.length === 0) {
+    editors.value.push(createEditor());
   }
 });
 
 onUnmounted(() => {
-  editors.value[0]?.destroy();
+  editors.value.forEach(editor => editor.destroy());
 });
 </script>
 
