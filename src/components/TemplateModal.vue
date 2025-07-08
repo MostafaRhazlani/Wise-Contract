@@ -81,10 +81,7 @@ import { ref, computed, watch, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import { useTemplateStore } from '@/store/templateStore';
 import { useTypeStore } from '@/store/typeStore';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
-
-// Import Tiptap for JSON to HTML conversion
+import html2pdf from 'html2pdf.js';
 import { generateHTML } from '@tiptap/html';
 import StarterKit from '@tiptap/starter-kit';
 import { Color } from '@tiptap/extension-color';
@@ -270,22 +267,23 @@ function replaceVariablesInJson(json: any, user: any): any {
   if (Array.isArray(json)) {
     return json.map(item => replaceVariablesInJson(item, user));
   } else if (json && typeof json === 'object') {
+    const newObj: any = { ...json };
+    
     if (json.type === 'variable' && json.attrs?.label) {
       // Replace variable node with a text node containing the value
       const value = getValueByPath(user, json.attrs.label);
       return {
         type: 'text',
         text: value ?? `[${json.attrs.label}]`,
-        marks: json.marks
+        marks: json.marks,
       };
     }
-    // Recursively process children
-    const newObj: any = { ...json };
     if (json.content) {
       newObj.content = replaceVariablesInJson(json.content, user);
     }
     return newObj;
   }
+  
   return json;
 }
 
@@ -476,7 +474,7 @@ onMounted(async () => {
 });
 </script>
 
-<style scoped>
+<style>
 /* Template card styling */
 .template-card {
   border: 2px solid transparent;
@@ -520,6 +518,13 @@ onMounted(async () => {
   border-radius: 4px;
 }
 
+#hide-content {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  visibility: visible;
+}
+
 /* PDF content styling */
 #pdf-content {
   font-family: Arial, sans-serif;
@@ -528,6 +533,16 @@ onMounted(async () => {
 #pdf-content h1, #pdf-content h2, #pdf-content h3 {
   margin-top: 20px;
   margin-bottom: 10px;
+}
+
+#pdf-content h1 {
+  font-size: 2em;
+  font-weight: bold;
+}
+
+#pdf-content h2 {
+  font-size: 1.5em;
+  font-weight: bold;
 }
 
 #pdf-content p {

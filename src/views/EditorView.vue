@@ -57,7 +57,11 @@
             <div class="w-full">
               <div class="max-w-4xl mx-auto w-4/2">
                 <div class="flex flex-col gap-8">
-                  <div ref="editorPageRef" class="bg-white shadow-lg min-h-[1122px] max-w-[793px] min-w-[793px] mx-auto p-16 overflow-hidden">
+                  <div
+                    class="bg-white shadow-lg min-h-[1122px] max-w-[793px] min-w-[793px] mx-auto p-16 overflow-hidden"
+                    :style="{ transform: `scale(${zoomLevel})`, transformOrigin: 'top center' }"
+                    ref="editorPageRef"
+                  >
                     <EditorContent
                       :editor="editor"
                       class="prose max-w-none"
@@ -66,6 +70,15 @@
                 </div>
               </div>
             </div>
+            <!-- Page Controls Component -->
+            <EditorPageControls
+              :zoom="zoomLevel"
+              @zoom-in="handleZoomIn"
+              @zoom-out="handleZoomOut"
+              @set-zoom="zoomLevel = $event"
+              @add-page="handleAddPage"
+              @fullscreen="handleFullscreen"
+            />
           </div>
         </div>
       </div>
@@ -100,6 +113,7 @@ import html2canvas from "html2canvas";
 import { useTypeStore } from "@/store/typeStore";
 import { useRoute } from "vue-router";
 import router from "@/routes/routes";
+import EditorPageControls from "@/components/EditorPageControls.vue";
 
 const editorPageRef = ref<HTMLElement | null>(null);
 const userModalOpen = ref<boolean>(false);
@@ -127,6 +141,7 @@ const userInitials = computed(() => {
 // Reactive state
 const editor = useEditor({
   content: "",
+  editable: true,
   extensions: [
     StarterKit,
     Underline,
@@ -202,6 +217,36 @@ const saveEditorContent = async () => {
     const errorMessage = error.response?.data?.message || error.message;
     console.log(errorMessage);
   }
+};
+
+// Zoom and fullscreen state
+const zoomLevel = ref(1);
+const isFullscreen = ref(false);
+
+const handleZoomIn = () => {
+  zoomLevel.value = Math.min(zoomLevel.value + 0.1, 2);
+  console.log(zoomLevel.value);
+  
+};
+const handleZoomOut = () => {
+  zoomLevel.value = Math.max(zoomLevel.value - 0.1, 0.5);
+};
+const handleFullscreen = () => {
+  const elem = document.documentElement;
+  if (!isFullscreen.value) {
+    if (elem.requestFullscreen) {
+      elem.requestFullscreen();
+    }
+    isFullscreen.value = true;
+  } else {
+    if (document.exitFullscreen) {
+      document.exitFullscreen();
+    }
+    isFullscreen.value = false;
+  }
+};
+const handleAddPage = () => {
+  console.log("New page created");
 };
 
 // Add to onMounted
