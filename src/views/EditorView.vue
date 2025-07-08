@@ -34,9 +34,9 @@
       <!-- Center area -->
       <div class="flex-1 flex flex-col transition-all duration-300">
         <!-- Toolbar -->
-        <EditorToolbar :editor="editor" />
+        <EditorToolbar :editor="editors[0]" />
 
-        <div class="flex h-[calc(100vh-7.5rem)]">
+        <div class="flex h-[calc(100vh-6.8rem)]">
           <!-- Floating Control Sidebar -->
           <EditorControlSidebar @toggle-panel="togglePanel" />
           <!-- Left Sidebar Panel -->
@@ -53,19 +53,23 @@
           </transition>
 
           <!-- Editor Area -->
-          <div class="flex-1 overflow-y-auto pt-20">
-            <div class="w-full">
-              <div class="max-w-4xl mx-auto w-4/2">
+          <div class="flex-1">
+            <div class="w-full h-[calc(100vh-10rem)] overflow-y-auto pt-12">
+              <div class="max-w-4xl mx-auto mb-10">
                 <div class="flex flex-col gap-8">
                   <div
-                    class="bg-white shadow-lg min-h-[1122px] max-w-[793px] min-w-[793px] mx-auto p-16 overflow-hidden"
+                    v-for="(editor, index) in editors"
+                    :key="index"
+                    class="flex justify-center"
                     :style="{ transform: `scale(${zoomLevel})`, transformOrigin: 'top center' }"
-                    ref="editorPageRef"
                   >
-                    <EditorContent
-                      :editor="editor"
-                      class="prose max-w-none"
-                    />
+                    <div
+                      class="bg-white shadow-lg min-h-[1122px] max-w-[793px] min-w-[793px] mx-auto p-16 overflow-hidden"
+                      ref="editorPageRef"
+                    >
+                      <EditorContent :editor="editor" class="prose max-w-none"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -107,13 +111,12 @@ import { useCompanyStore } from "@/store/companyStore";
 import { useTemplateStore } from "@/store/templateStore";
 import { useEditorStore } from "@/store/editorStore";
 import { Download } from "lucide-vue-next";
-import { useEditor, EditorContent } from "@tiptap/vue-3";
+import { useEditor, EditorContent, Editor } from "@tiptap/vue-3";
 import axios from "axios";
 import html2canvas from "html2canvas";
-import { useTypeStore } from "@/store/typeStore";
 import { useRoute } from "vue-router";
-import router from "@/routes/routes";
 import EditorPageControls from "@/components/EditorPageControls.vue";
+import type { Ref } from 'vue';
 
 const editorPageRef = ref<HTMLElement | null>(null);
 const userModalOpen = ref<boolean>(false);
@@ -123,11 +126,14 @@ const variablesStore = useVariablesStore();
 const companyStore = useCompanyStore();
 const templateStore = useTemplateStore();
 const editorStore = useEditorStore();
-const typeStore = useTypeStore();
 const route = useRoute();
+const editors: Ref<Editor[]> = ref([])
 
 const { activePanel } = storeToRefs(editorStore);
 const { togglePanel } = editorStore;
+
+// const baseGap = 32;
+// const pageGap = computed(() => baseGap * zoomLevel.value);
 
 // Split name user to get first characters
 const userInitials = computed(() => {
@@ -138,45 +144,49 @@ const userInitials = computed(() => {
     .join("")
     .toUpperCase();
 });
-// Reactive state
-const editor = useEditor({
-  content: "",
-  editable: true,
-  extensions: [
-    StarterKit,
-    Underline,
-    TextStyle,
-    Color,
-    TextAlign.configure({
-      types: ["heading", "paragraph"],
-    }),
-    Variable.configure({
-      HTMLAttributes: {
-        class: "variable-node",
-      },
-      getVariables: () => variablesStore.variables,
-    }),
-  ],
-  onUpdate: ({ editor }) => {
-    // Save content to localStorage whenever it changes
-    localStorage.setItem("editorContent", JSON.stringify(editor.getJSON()));
-  },
-});
+
+const  createEditor = (content = '') => {
+  return useEditor({
+    content,
+    editable: true,
+    extensions: [
+      StarterKit,
+      Underline,
+      TextStyle,
+      Color,
+      TextAlign.configure({
+        types: ["heading", "paragraph"],
+      }),
+      Variable.configure({
+        HTMLAttributes: {
+          class: "variable-node",
+        },
+        getVariables: () => variablesStore.variables,
+      }),
+    ],
+    onUpdate: ({ editor }) => {
+      const index = editors.value.findIndex(e => e === editor);
+      if (index !== -1) {
+        localStorage.setItem(`editorContent-${index}`, JSON.stringify(editor.getJSON()));
+      }
+    },
+  });
+}
 
 const handleSelectTemplate = (templateId: number) => {
   const template = templateStore.templates.find(el => el.id === templateId);
 
   const content_json = JSON.parse(template?.content_json);
   localStorage.setItem("editorContent", JSON.stringify(content_json));
-  if(editor.value) {
-    editor.value.commands.setContent(content_json);
+  if(editors.value[0]) {
+    editors.value[0]?.commands.setContent(content_json);
   }
 };
 
 
 const insertVariable = (variable: { key: string; label: string }) => {
-  if (editor.value) {
-    editor.value.commands.insertVariable({
+  if (editors.value[0]) {
+    editors.value[0]?.commands.insertVariable({
       key: variable.key,
       label: variable.label,
     });
@@ -184,13 +194,13 @@ const insertVariable = (variable: { key: string; label: string }) => {
 };
 
 const saveEditorContent = async () => {
-  if (!editorPageRef.value || !editor.value || !companyStore.company?.id) {
+  if (!editorPageRef.value || !editors.value[0] || !companyStore.company?.id) {
     alert("Some required information is missing to save the content.");
     return;
   }
 
   try {
-    const jsonContent = editor.value.getJSON();
+    const jsonContent = editors.value[0]?.getJSON();
     const canvas = await html2canvas(editorPageRef.value, { scale: 0.5 });
     const imageDataUrl = canvas.toDataURL("image/png");
 
@@ -246,29 +256,31 @@ const handleFullscreen = () => {
   }
 };
 const handleAddPage = () => {
-  console.log("New page created");
+  const newEditor = createEditor();
+  editors.value.push(newEditor.value!)
 };
 
+const firstEditor = createEditor();
+editors.value.push(firstEditor.value!);
 // Add to onMounted
 onMounted(async () => {
   if (variablesStore.variables.length === 0) {
     variablesStore.fetchVariables();
   }
   await companyStore.getCompany();
-  
   const savedContent = localStorage.getItem("editorContent");
-  if (savedContent && editor.value) {
+  if (savedContent && editors.value) {
     try {
       const json = JSON.parse(savedContent);
-      editor.value.commands.setContent(json);
+      editors.value[0]?.commands.setContent(json);
     } catch (error) {
-      editor.value.commands.setContent(savedContent);
+      editors.value[0]?.commands.setContent(savedContent);
     }
   }
 });
 
 onUnmounted(() => {
-  editor.value?.destroy();
+  editors.value[0]?.destroy();
 });
 </script>
 
