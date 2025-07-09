@@ -1,6 +1,6 @@
 <template>
-    <div class="bg-white shadow-lg min-h-[1122px] max-w-[793px] min-w-[793px] mx-auto p-16 overflow-hidden" ref="editorPageRef">
-        <EditorContent :editor="editor" class="prose max-w-none" />
+    <div class="bg-white shadow-lg mx-auto p-12" ref="editorPageRef" style="width: 794px; height: 1123px">
+        <EditorContent :editor="editor" class="w-full h-full" />
     </div>
 </template>
 

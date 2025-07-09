@@ -1,5 +1,5 @@
 <template>
-    <div class="absolute bottom-0 w-[calc(100%-5.4rem)] justify-center gap-4 p-2 border-t border-gray-200 bg-slate-100">
+    <div class="p-2 border-t border-gray-200 bg-slate-100">
         <div class="flex items-center justify-end">
             <button @click="$emit('zoom-out')" class="p-2 rounded hover:bg-gray-200" title="Zoom Out">
                 <Minus :size="18"/>
