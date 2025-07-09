@@ -1,5 +1,5 @@
 <template>
-    <div class="absolute bottom-0 w-[calc(100%-5.4rem)] justify-center gap-4 p-2 border-t border-gray-200 bg-slate-100">
+    <div class="p-2 border-t border-gray-200 bg-slate-100">
         <div class="flex items-center justify-end">
             <button @click="$emit('zoom-out')" class="p-2 rounded hover:bg-gray-200" title="Zoom Out">
                 <Minus :size="18"/>
@@ -19,8 +19,29 @@
                 <Plus :size="18"/>
             </button>
             <div class="w-[2px] h-5 bg-gray-200 mx-1"></div>
+            <div class="relative">
+                <button @click="toggleShowModal" class="flex items-center gap-1 p-2 rounded hover:bg-slate-200" title="Show Pages">
+                    <Layers :size="18"/> <span class="text-xs font-medium">Pages</span>
+                </button>
+                <!-- Modal for layers/pages -->
+                <div v-if="showLayersModal" class="absolute bottom-12 right-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+                    <div class="bg-white rounded shadow-lg p-6">
+                        <ul class="flex items-center gap-3">
+                            <li v-for="index in pageCount" :key="index">
+                                <button
+                                class="w-full px-2 py-1 rounded hover:bg-gray-100"
+                                :class="{ 'bg-gray-200': index - 1 === currentPage }"
+                                @click="selectPage(index - 1)"
+                                >
+                                Page {{ index }}
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
             <button @click="$emit('add-page')" class="p-2 rounded hover:bg-slate-200" title="Add New Page">
-                <Layers2 :size="18"/>
+                <CopyPlus :size="18"/>
             </button>
 
             <div class="w-[2px] h-5 bg-gray-200 mx-1"></div>
@@ -33,9 +54,34 @@
 </template>
 
 <script setup lang="ts">
-import { Layers2, Maximize2, Minus, Plus } from 'lucide-vue-next';
+import { CopyPlus, Maximize2, Minus, Plus, Layers } from 'lucide-vue-next';
+import { ref } from 'vue';
 
-defineProps<{ zoom: number }>();
+defineProps<{ 
+    zoom: number,
+    pageCount: number,
+    currentPage: number,
+}>();
+
+const emit = defineEmits<{
+    (e: 'select-page', index: number): void,
+    (e: 'add-page'): void,
+    (e: 'zoom-in'): void,
+    (e: 'zoom-out'): void,
+    (e: 'set-zoom', value: number): void,
+    (e: 'fullscreen'): void,
+}>();
+
+const showLayersModal = ref<boolean>(false);
+
+const toggleShowModal = () => {
+    showLayersModal.value = !showLayersModal.value
+}
+
+const selectPage = (index: number) => {
+    emit('select-page', index);
+    showLayersModal.value = false;
+};
 </script>
 
 <style scoped>

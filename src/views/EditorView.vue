@@ -1,47 +1,18 @@
 <template>
-  <div class="bg-slate-100">
-    <!-- Header with navigation -->
-    <div class="bg-green-400 p-2 flex justify-between items-center">
-        <RouterLink to="/">
-          <div class="flex items-center gap-2">
-              <div class="w-10 h-10 rounded-full overflow-hidden">
-                <img class="object-cover w-full h-full" :src="companyStore.company?.company_logo" alt="" />
-              </div>
-              <h1 class="font-semibold text-white text-lg">{{ companyStore.company?.company_name }}</h1>
-          </div>
-        </RouterLink>
-      <div class="flex items-center space-x-4">
-        <!-- Download Button -->
-        <button title="donwload template" @click="saveEditorContent" class="ml-4 p-2 text-white rounded hover:bg-green-500 transition">
-          <Download />
-        </button>
-        <!-- User Profile Section -->
-        <div class="relative">
-          <button @click="userModalOpen = !userModalOpen"
-            class="flex items-center space-x-2 rounded-lg transition-colors">
-            <div
-              class="w-10 h-10 bg-gradient-to-br from-red-400 to-red-600 rounded-full flex items-center justify-center">
-              <span class="text-white text-sm font-semibold">{{ userInitials }}</span>
-            </div>
-          </button>
-          <UserProfileModal v-model:show="userModalOpen" position="top" />
-        </div>
-      </div>
-    </div>
+  <div class="">
+    <HeaderEditor :editors="editors" :editorPageRefs="editorPageRefs" />
 
-    <!-- Main Content Area -->
-    <div class="flex">
-      <!-- Center area -->
-      <div class="flex-1 flex flex-col transition-all duration-300">
-        <!-- Toolbar -->
-        <EditorToolbar :editor="editor" />
-
-        <div class="flex h-[calc(100vh-7.5rem)]">
+    <!-- Editor Layout -->
+    <!-- Toolbar -->
+    <EditorToolbar :editor="editors[activePageIndex]" />
+    <div class="h-[calc(100vh-6.8rem)]">
+      <div class="flex h-full">
+        <div class="flex">
           <!-- Floating Control Sidebar -->
           <EditorControlSidebar @toggle-panel="togglePanel" />
           <!-- Left Sidebar Panel -->
           <transition name="fade">
-            <div v-if="activePanel" class="mt-2 rounded-lg w-80 bg-white shadow-lg flex flex-col">
+            <div v-if="activePanel" class="w-80 bg-white border-r border-gray-200 flex flex-col">
               <div class="p-4 overflow-y-auto flex-1">
                 <VariablesList v-if="activePanel === 'variables'" @select="insertVariable" />
                 <div v-if="activePanel === 'templates'">
@@ -51,302 +22,225 @@
               </div>
             </div>
           </transition>
-
-          <!-- Editor Area -->
-          <div class="flex-1 overflow-y-auto pt-20">
-            <div class="w-full">
-              <div class="max-w-4xl mx-auto w-4/2">
-                <div class="flex flex-col gap-8">
-                  <div
-                    class="bg-white shadow-lg min-h-[1122px] max-w-[793px] min-w-[793px] mx-auto p-16 overflow-hidden"
-                    :style="{ transform: `scale(${zoomLevel})`, transformOrigin: 'top center' }"
-                    ref="editorPageRef"
-                  >
-                    <EditorContent
-                      :editor="editor"
-                      class="prose max-w-none"
-                    />
-                  </div>
-                </div>
+        </div>
+        <div class="flex flex-col w-full">
+          <div class="h-[calc(100vh-10rem)] w-full overflow-auto bg-gray-100">
+            <div class="flex items-center justify-center w-max h-max min-w-full min-h-full mx-auto my-10">
+              <div 
+                v-for="(editor, index) in editors" 
+                v-show="index === activePageIndex"
+                :ref="el => editorPageRefs[index] = el as HTMLElement | null" 
+                :key="index" 
+                :style="{
+                  transform: `scale(${zoomLevel})`,
+                  transformOrigin: 'top',
+                }">
+                <EditorPage :editor="editor"/>
               </div>
             </div>
-            <!-- Page Controls Component -->
-            <EditorPageControls
-              :zoom="zoomLevel"
-              @zoom-in="handleZoomIn"
-              @zoom-out="handleZoomOut"
-              @set-zoom="zoomLevel = $event"
-              @add-page="handleAddPage"
-              @fullscreen="handleFullscreen"
-            />
           </div>
+          <!-- Page Controls Component -->
+          <EditorPageControls :zoom="zoomLevel" :pageCount="editors.length" :currentPage="activePageIndex"
+            @zoom-in="handleZoomIn" @zoom-out="handleZoomOut" @set-zoom="zoomLevel = $event" @add-page="handleAddPage"
+            @fullscreen="handleFullscreen" @select-page="handleSelectPage" />
         </div>
       </div>
     </div>
-    
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from "vue";
-import UserProfileModal from "@/components/UserProfileModal.vue";
-import { useAuthStore } from "../store/authStore";
-import { storeToRefs } from "pinia";
-import StarterKit from "@tiptap/starter-kit";
-import TextAlign from "@tiptap/extension-text-align";
-import Underline from "@tiptap/extension-underline";
-import Color from "@tiptap/extension-color";
-import TextStyle from "@tiptap/extension-text-style";
-import EditorToolbar from "@/components/EditorToolbar.vue";
-import { Variable } from "@/extensions/VariableNode";
-import VariablesList from "@/components/VariablesList.vue";
-import TemplatesList from "@/components/TemplatesList.vue";
-import EditorControlSidebar from "@/components/EditorControlSidebar.vue";
-import { useVariablesStore } from "@/store/variablesStore";
-import { useCompanyStore } from "@/store/companyStore";
-import { useTemplateStore } from "@/store/templateStore";
-import { useEditorStore } from "@/store/editorStore";
-import { Download } from "lucide-vue-next";
-import { useEditor, EditorContent } from "@tiptap/vue-3";
-import axios from "axios";
-import html2canvas from "html2canvas";
-import { useTypeStore } from "@/store/typeStore";
-import { useRoute } from "vue-router";
-import router from "@/routes/routes";
-import EditorPageControls from "@/components/EditorPageControls.vue";
+  import HeaderEditor from '@/components/HeaderEditor.vue';
+  import EditorToolbar from '@/components/EditorToolbar.vue';
+  import TemplatesList from '@/components/TemplatesList.vue';
+  import EditorControlSidebar from '@/components/EditorControlSidebar.vue';
+  import VariablesList from '@/components/VariablesList.vue';
+  import EditorPageControls from '@/components/EditorPageControls.vue';
+  import EditorPage from '@/components/EditorPage.vue';
 
-const editorPageRef = ref<HTMLElement | null>(null);
-const userModalOpen = ref<boolean>(false);
+  import { Editor } from '@tiptap/vue-3';
+  import { ref, onMounted, onUnmounted } from 'vue';
+  import type { Ref } from 'vue';
+  import { storeToRefs } from 'pinia';
 
-const authStore = useAuthStore();
-const variablesStore = useVariablesStore();
-const companyStore = useCompanyStore();
-const templateStore = useTemplateStore();
-const editorStore = useEditorStore();
-const typeStore = useTypeStore();
-const route = useRoute();
+  import { useEditorStore } from "@/store/editorStore";
+  import { useTemplateStore } from "@/store/templateStore";
+  import { useVariablesStore } from '@/store/variablesStore';
 
-const { activePanel } = storeToRefs(editorStore);
-const { togglePanel } = editorStore;
+  import StarterKit from '@tiptap/starter-kit';
+  import TextStyle from '@tiptap/extension-text-style';
+  import Underline from "@tiptap/extension-underline";
+  import Color from '@tiptap/extension-color';
+  import TextAlign from '@tiptap/extension-text-align';
+  import { Variable } from "@/extensions/VariableNode";
 
-// Split name user to get first characters
-const userInitials = computed(() => {
-  const name = authStore.user?.name || "";
-  return name
-    .split(" ")
-    .map((n) => n.charAt(0))
-    .join("")
-    .toUpperCase();
-});
-// Reactive state
-const editor = useEditor({
-  content: "",
-  editable: true,
-  extensions: [
-    StarterKit,
-    Underline,
-    TextStyle,
-    Color,
-    TextAlign.configure({
-      types: ["heading", "paragraph"],
-    }),
-    Variable.configure({
-      HTMLAttributes: {
-        class: "variable-node",
+  const editorPageRefs = ref<(HTMLElement | null)[]>([]);
+  const editors: Ref<Editor[]> = ref([]);
+  const activePageIndex: Ref<number> = ref(0);
+  const zoomLevel: Ref<number> = ref(1);
+  const isFullscreen: Ref<boolean> = ref(false);
+
+  const editorStore = useEditorStore();
+  const templateStore = useTemplateStore();
+  const variablesStore = useVariablesStore();
+
+  const { activePanel } = storeToRefs(editorStore);
+  const { togglePanel } = editorStore;
+
+  function createEditor(content = '') {
+    return new Editor({
+      content,
+      extensions: [
+        StarterKit,
+        Underline,
+        TextStyle,
+        Color,
+        TextAlign.configure({ types: ["heading", "paragraph"] }),
+        Variable.configure({
+          HTMLAttributes: { class: "variable-node" },
+          getVariables: () => variablesStore.variables,
+        }),
+      ],
+      onUpdate: ({ editor }) => {
+        // Optionally, save content to localStorage or backend here
       },
-      getVariables: () => variablesStore.variables,
-    }),
-  ],
-  onUpdate: ({ editor }) => {
-    // Save content to localStorage whenever it changes
-    localStorage.setItem("editorContent", JSON.stringify(editor.getJSON()));
-  },
-});
-
-const handleSelectTemplate = (templateId: number) => {
-  const template = templateStore.templates.find(el => el.id === templateId);
-
-  const content_json = JSON.parse(template?.content_json);
-  localStorage.setItem("editorContent", JSON.stringify(content_json));
-  if(editor.value) {
-    editor.value.commands.setContent(content_json);
-  }
-};
-
-
-const insertVariable = (variable: { key: string; label: string }) => {
-  if (editor.value) {
-    editor.value.commands.insertVariable({
-      key: variable.key,
-      label: variable.label,
     });
   }
-};
 
-const saveEditorContent = async () => {
-  if (!editorPageRef.value || !editor.value || !companyStore.company?.id) {
-    alert("Some required information is missing to save the content.");
-    return;
-  }
+  const insertVariable = (variable: { key: string; label: string }) => {
+    if (editors.value[activePageIndex.value]) {
+      editors.value[activePageIndex.value].commands.insertVariable({
+        key: variable.key,
+        label: variable.label,
+      });
+    }
+  };
 
-  try {
-    const jsonContent = editor.value.getJSON();
-    const canvas = await html2canvas(editorPageRef.value, { scale: 0.5 });
-    const imageDataUrl = canvas.toDataURL("image/png");
+  const handleSelectTemplate = (templateId: number) => {
+    const template = templateStore.templates.find(el => el.id === templateId);
+    const content_json = JSON.parse(template?.content_json);
+    localStorage.setItem("editorContent", JSON.stringify(content_json));
+    if (editors.value.length > 0) {
+      editors.value[activePageIndex.value].commands.setContent(content_json);
+    }
+  };
 
-    const fetchResponse = await fetch(imageDataUrl);
-    const imageBlob = await fetchResponse.blob();
-    const imageFile = new File([imageBlob], "template_thumbnail.png", { type: "image/png" });
+  const handleAddPage = () => {
+    editors.value.push(createEditor());
+    activePageIndex.value = editors.value.length - 1;
+  };
 
-    const formData = new FormData();
-    formData.append("content_json", JSON.stringify(jsonContent));
-    formData.append("company_id", String(companyStore.company.id));
-    formData.append("type_id", String(route.params.type_id));
-    formData.append("image", imageFile);
-
-    const response = await axios.post("/template/save", formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
+  const handleSelectPage = (index: number) => {
+    activePageIndex.value = index;
+  };
+  
+  const handleZoomIn = () => {
+    zoomLevel.value = Math.min(zoomLevel.value + 0.1, 2);
+  };
+  const handleZoomOut = () => {
+    zoomLevel.value = Math.max(zoomLevel.value - 0.1, 0.5);
+  };
+  const handleFullscreen = () => {
+    const elem = document.documentElement;
+    if (!isFullscreen.value) {
+      if (elem.requestFullscreen) {
+        elem.requestFullscreen();
       }
-    });
-
-    if(response.status === 200) {
-      templateStore.getTemplatesCompany();
+      isFullscreen.value = true;
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+      isFullscreen.value = false;
     }
-  } catch (error: any) {
-    const errorMessage = error.response?.data?.message || error.message;
-    console.log(errorMessage);
-  }
-};
+  };
 
-// Zoom and fullscreen state
-const zoomLevel = ref(1);
-const isFullscreen = ref(false);
-
-const handleZoomIn = () => {
-  zoomLevel.value = Math.min(zoomLevel.value + 0.1, 2);
-  console.log(zoomLevel.value);
-  
-};
-const handleZoomOut = () => {
-  zoomLevel.value = Math.max(zoomLevel.value - 0.1, 0.5);
-};
-const handleFullscreen = () => {
-  const elem = document.documentElement;
-  if (!isFullscreen.value) {
-    if (elem.requestFullscreen) {
-      elem.requestFullscreen();
+  onMounted(() => {
+    if (editors.value.length === 0) {
+      editors.value.push(createEditor());
     }
-    isFullscreen.value = true;
-  } else {
-    if (document.exitFullscreen) {
-      document.exitFullscreen();
-    }
-    isFullscreen.value = false;
-  }
-};
-const handleAddPage = () => {
-  console.log("New page created");
-};
+  });
 
-// Add to onMounted
-onMounted(async () => {
-  if (variablesStore.variables.length === 0) {
-    variablesStore.fetchVariables();
-  }
-  await companyStore.getCompany();
-  
-  const savedContent = localStorage.getItem("editorContent");
-  if (savedContent && editor.value) {
-    try {
-      const json = JSON.parse(savedContent);
-      editor.value.commands.setContent(json);
-    } catch (error) {
-      editor.value.commands.setContent(savedContent);
-    }
-  }
-});
-
-onUnmounted(() => {
-  editor.value?.destroy();
-});
+  onUnmounted(() => {
+    editors.value.forEach(editor => editor.destroy());
+  });
 </script>
 
 <style>
+
 .ProseMirror {
-  outline: none;
-  min-height: 200px;
-}
+    outline: none;
+    min-height: 200px;
+  }
+  
+  .variable-node {
+    background-color: #dcfce7;
+    border-radius: 4px;
+    user-select: text;
+  }
+  
+  .ProseMirror p {
+    margin: 1em 0;
+  }
+  
+  .ProseMirror h1 {
+    font-size: 2em;
+    margin: 0.67em 0;
+  }
+  
+  .ProseMirror h2 {
+    font-size: 1.5em;
+    margin: 0.83em 0;
+  }
+  
+  .ProseMirror ul,
+  .ProseMirror ol {
+    padding: 0 1em;
+  }
+  
+  .ProseMirror code {
+    background-color: #f1f1f1;
+    padding: 0.2em 0.4em;
+    border-radius: 3px;
+  }
+  
+  .ProseMirror pre {
+    background: #0d0d0d;
+    color: #fff;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+  }
+  
+  .ProseMirror pre code {
+    color: inherit;
+    padding: 0;
+    background: none;
+    font-size: 0.8rem;
+  }
+  
+  .ProseMirror blockquote {
+    padding-left: 1rem;
+    border-left: 2px solid #ddd;
+  }
+  
+  .ProseMirror hr {
+    border: none;
+    border-top: 2px solid #ddd;
+    margin: 2rem 0;
+  }
 
-.variable-node {
-  background-color: #dcfce7;
-  border-radius: 4px;
-  user-select: text;
-}
-
-.ProseMirror p {
-  margin: 1em 0;
-}
-
-.ProseMirror h1 {
-  font-size: 2em;
-  margin: 0.67em 0;
-}
-
-.ProseMirror h2 {
-  font-size: 1.5em;
-  margin: 0.83em 0;
-}
-
-.ProseMirror ul,
-.ProseMirror ol {
-  padding: 0 1em;
-}
-
-.ProseMirror code {
-  background-color: #f1f1f1;
-  padding: 0.2em 0.4em;
-  border-radius: 3px;
-}
-
-.ProseMirror pre {
-  background: #0d0d0d;
-  color: #fff;
-  padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
-}
-
-.ProseMirror pre code {
-  color: inherit;
-  padding: 0;
-  background: none;
-  font-size: 0.8rem;
-}
-
-.ProseMirror blockquote {
-  padding-left: 1rem;
-  border-left: 2px solid #ddd;
-}
-
-.ProseMirror hr {
-  border: none;
-  border-top: 2px solid #ddd;
-  margin: 2rem 0;
-}
-
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.1s;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-
-.ProseMirror .variable-node.ProseMirror-selectednode {
-  outline: 2px solid #22d3ee;
-  background-color: #bbf7d0;
-}
+  .ProseMirror .variable-node.ProseMirror-selectednode {
+    outline: 2px solid #22d3ee;
+    background-color: #bbf7d0;
+  }
+  
+  .fade-enter-active,
+  .fade-leave-active {
+    transition: opacity 0.1s;
+  }
+  
+  .fade-enter-from,
+  .fade-leave-to {
+    opacity: 0;
+  }
 </style>
-
