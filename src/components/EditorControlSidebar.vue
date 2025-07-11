@@ -6,7 +6,7 @@
               title="Variables"
               class="flex flex-col items-center justify-center">
         <FileJson2 :size="40" class="text-gray-600 rounded-md hover:bg-gray-100 hover:text-green-600 transition-colors p-2" />
-        <span class="text-xs font-semibold text-gray-600 mt-1">Variables</span>
+        <span class="text-xs font-semibold text-gray-600">Variables</span>
       </button>
       
       <!-- Templates Icon -->
@@ -14,14 +14,20 @@
               title="Templates"
               class="flex flex-col items-center justify-center">
         <LayoutTemplate :size="40" class="text-gray-600 rounded-md hover:bg-gray-100 hover:text-green-600 transition-colors p-2" />
-        <span class="text-xs font-semibold text-gray-600 mt-1">Templates</span>
+        <span class="text-xs font-semibold text-gray-600">Templates</span>
+      </button>
+      <button @click="$emit('toggle-panel', 'ee')"
+              title="Upload"
+              class="flex flex-col items-center justify-center">
+        <CloudUpload :size="40" class="text-gray-600 rounded-md hover:bg-gray-100 hover:text-green-600 transition-colors p-2" />
+        <span class="text-xs font-semibold text-gray-600">Upload</span>
       </button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { FileJson2, LayoutTemplate } from 'lucide-vue-next';
+import { FileJson2, LayoutTemplate, CloudUpload } from 'lucide-vue-next';
 
 defineEmits(['toggle-panel']);
 </script>

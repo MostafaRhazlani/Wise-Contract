@@ -24,7 +24,7 @@
       >
         <div class="w-full bg-gray-100 rounded border overflow-hidden">
           <img 
-            :src="storageBaseUrl + template.image" 
+            :src="storageBaseUrl + template.pages[0].image_path" 
             :alt="`${template.name || 'Template'} image`" 
             class="object-contain h-full w-full" 
           />

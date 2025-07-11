@@ -25,11 +25,11 @@
         </div>
         <div class="flex flex-col w-full">
           <div class="h-[calc(100vh-10rem)] w-full overflow-auto bg-gray-100">
-            <div class="flex items-center justify-center w-max h-max min-w-full min-h-full mx-auto my-10">
+            <div class="flex items-center justify-center w-max h-max min-w-full min-h-full mx-auto my-10 relative">
               <div 
-                v-for="(editor, index) in editors" 
-                v-show="index === activePageIndex"
-                :ref="el => editorPageRefs[index] = el as HTMLElement | null" 
+                v-for="(editor, index) in editors"
+                :ref="el => editorPageRefs[index] = el as HTMLElement | null"
+                :class="[index === activePageIndex ? 'z-10 opacity-100' : 'pointer-events-none absolute -z-10']"
                 :key="index" 
                 :style="{
                   transform: `scale(${zoomLevel})`,
@@ -40,9 +40,9 @@
             </div>
           </div>
           <!-- Page Controls Component -->
-          <EditorPageControls :zoom="zoomLevel" :pageCount="editors.length" :currentPage="activePageIndex"
+          <EditorPageControls :zoom="zoomLevel" :pages="template_pages" :currentPage="activePageIndex"
             @zoom-in="handleZoomIn" @zoom-out="handleZoomOut" @set-zoom="zoomLevel = $event" @add-page="handleAddPage"
-            @fullscreen="handleFullscreen" @select-page="handleSelectPage" />
+            @fullscreen="handleFullscreen" @select-page="handleSelectPage"/>
         </div>
       </div>
     </div>
@@ -59,7 +59,7 @@
   import EditorPage from '@/components/EditorPage.vue';
 
   import { Editor } from '@tiptap/vue-3';
-  import { ref, onMounted, onUnmounted } from 'vue';
+  import { ref, onMounted, onUnmounted, computed } from 'vue';
   import type { Ref } from 'vue';
   import { storeToRefs } from 'pinia';
 
@@ -73,12 +73,18 @@
   import Color from '@tiptap/extension-color';
   import TextAlign from '@tiptap/extension-text-align';
   import { Variable } from "@/extensions/VariableNode";
+  import { getContent, removeContent, setContent } from "@/plugins/indexedDb";
+  import { useRouter, useRoute } from 'vue-router'
 
+
+  const router = useRouter();
+  const route = useRoute();
   const editorPageRefs = ref<(HTMLElement | null)[]>([]);
   const editors: Ref<Editor[]> = ref([]);
   const activePageIndex: Ref<number> = ref(0);
   const zoomLevel: Ref<number> = ref(1);
   const isFullscreen: Ref<boolean> = ref(false);
+  const pages: Ref<any[]> = ref([]);
 
   const editorStore = useEditorStore();
   const templateStore = useTemplateStore();
@@ -101,8 +107,10 @@
           getVariables: () => variablesStore.variables,
         }),
       ],
-      onUpdate: ({ editor }) => {
-        // Optionally, save content to localStorage or backend here
+      onUpdate: () => {
+        // Save all editors' content to IndexedDB on any update
+        const allContent = editors.value.map(editor => editor.getJSON());
+        setContent("editorContent", allContent);
       },
     });
   }
@@ -118,10 +126,18 @@
 
   const handleSelectTemplate = (templateId: number) => {
     const template = templateStore.templates.find(el => el.id === templateId);
-    const content_json = JSON.parse(template?.content_json);
-    localStorage.setItem("editorContent", JSON.stringify(content_json));
-    if (editors.value.length > 0) {
-      editors.value[activePageIndex.value].commands.setContent(content_json);
+    if (template?.pages && template.pages.length > 0) {
+
+      editors.value.forEach(editor => editor.destroy());
+      router.push({
+        name: 'Editor',
+        params: { type_id: route.params.type_id, template_id: templateId }
+      });
+
+      // Replace all editors with the template's pages
+      const pagesContent = template.pages.map(page => JSON.parse(page.content_json));
+      editors.value = pagesContent.map((content: any) => createEditor(content));
+      activePageIndex.value = 0;
     }
   };
 
@@ -133,6 +149,11 @@
   const handleSelectPage = (index: number) => {
     activePageIndex.value = index;
   };
+
+  const template_pages = computed(() => {
+    const template = templateStore.templates.find(el => el.id === Number(route.params.template_id));
+    return template?.pages ?? [];
+  })
   
   const handleZoomIn = () => {
     zoomLevel.value = Math.min(zoomLevel.value + 0.1, 2);
@@ -155,14 +176,18 @@
     }
   };
 
-  onMounted(() => {
-    if (editors.value.length === 0) {
+  onMounted(async () => {
+    const pagesContent = await getContent("editorContent");
+    if (pagesContent && Array.isArray(pagesContent)) {
+      editors.value = pagesContent.map((content: any) => createEditor(content));
+    } else if (editors.value.length === 0) {
       editors.value.push(createEditor());
     }
   });
 
   onUnmounted(() => {
     editors.value.forEach(editor => editor.destroy());
+    removeContent("editorContent");
   });
 </script>
 
@@ -242,5 +267,12 @@
   .fade-enter-from,
   .fade-leave-to {
     opacity: 0;
+  }
+
+  .hide-content {
+    position: absolute;
+    left: -9999px;
+    top: 0;
+    visibility: visible;
   }
 </style>

@@ -84,12 +84,23 @@
               @click="selectTemplate(template.type.id, template.id)"
               class="bg-white rounded-lg cursor-pointer"
             >
-              <div class="bg-gray-200 hover:bg-gray-300 hover:transition-all hover:duration-300 px-12 pt-4 rounded-t-lg overflow-hidden h-48">
-                <img
-                  :src="storageBaseUrl + template.image"
-                  alt=""
-                  class="w-full h-full object-start"
-                />
+              <div
+                class="bg-gray-200 hover:bg-gray-300 hover:transition-all hover:duration-300 rounded-t-lg pt-4 overflow-hidden h-48 flex items-center justify-center"
+                @mouseenter="handleMouseEnter(template)"
+                @mouseleave="handleMouseLeave(template)"
+              >
+              <div v-if="template.pages && template.pages.length > 0" class="w-full h-full flex justify-center items-center overflow-hidden">
+                <div class="w-2/3 h-full relative">
+                  <transition name="slide-left" mode="out-in">
+                    <img
+                      :key="currentImageIndexes[template.id]"
+                      :src="storageBaseUrl + template.pages[currentImageIndexes[template.id]]?.image_path"
+                      alt=""
+                      class="absolute w-full h-full shadow"
+                    />
+                  </transition>
+                </div>
+              </div>
               </div>
               <div class="p-4">
                 <h3 class="font-medium text-gray-900 mb-1 truncate">Template</h3>
@@ -118,7 +129,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, computed } from "vue";
+import { onMounted, computed, reactive, ref } from "vue";
 import { useTemplateStore } from "@/store/templateStore";
 import { useCompanyStore } from "@/store/companyStore";
 import TemplateTypesList from "@/components/TemplateTypesList.vue";
@@ -128,8 +139,10 @@ import {
   MoreHorizontalIcon,
 } from "lucide-vue-next";
 import * as icons from "lucide-vue-next";
-import router from "@/routes/routes";
+import { useRouter } from 'vue-router'
+import { setContent } from "@/plugins/indexedDb";
 
+const router = useRouter();
 const templateStore = useTemplateStore();
 const companyStore = useCompanyStore();
 const templates = computed(() => templateStore.templates);
@@ -141,21 +154,54 @@ const getIconComponent = (iconName: string) => {
   return iconComponent;
 };
 
+// --- Carousel State ---
+const currentImageIndexes = reactive<{ [templateId: number]: number }>({});
+const hoverTimers = ref<{ [templateId: number]: any }>({});
+
+const getCurrentImage = (template: any) => {
+  const idx = currentImageIndexes[template.id] || 0;
+  return template.pages && template.pages.length > 0
+    ? template.pages[idx].image_path
+    : '';
+};
+
+const handleMouseEnter = (template: any) => {
+  if (!template.pages || template.pages.length <= 1) return;
+  if (hoverTimers.value[template.id]) return; // already running
+  hoverTimers.value[template.id] = setInterval(() => {
+    const len = template.pages.length;
+    currentImageIndexes[template.id] = (currentImageIndexes[template.id] + 1 || 1) % len;
+  }, 1200); // 1.5s per slide
+};
+
+const handleMouseLeave = (template: any) => {
+  if (hoverTimers.value[template.id]) {
+    clearInterval(hoverTimers.value[template.id]);
+    hoverTimers.value[template.id] = null;
+  }
+  currentImageIndexes[template.id] = 0;
+};
+
 const selectTemplate = (type_id: number, template_id: number) => {
   const template = templateStore.templates.find(el => el.id === template_id);
-  if (template?.content_json) {
-    const parse_json = JSON.parse(template?.content_json);
-    localStorage.setItem("editorContent", JSON.stringify(parse_json));
-    
-    router.push({
-      name: 'Editor',
-      params: { type_id: type_id }
-    })
+  // Use the first page's content_json if available
+  if (template?.pages && template.pages.length > 0) {
+    const pagesContent = template.pages.map(page => JSON.parse(page.content_json));
+    setContent("editorContent", pagesContent).then(() => {
+      router.push({
+        name: 'Editor',
+        params: { type_id: type_id, template_id: template_id }
+      });
+    });
   }
 }
+
 onMounted(async () => {
   await companyStore.getCompany();
   await templateStore.getTemplatesCompany();
+  
+  // Initialize all indexes to 0
+  templateStore.templates.forEach(t => { currentImageIndexes[t.id] = 0; });
 });
 </script>
 
@@ -177,27 +223,28 @@ onMounted(async () => {
   background: rgba(156, 163, 175, 0.7);
 }
 
-/* Smooth transitions */
-.transition-all {
-  transition-property: all;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 300ms;
+.slide-left-enter-active,
+.slide-left-leave-active {
+  transition: all 0.5s ease;
+  position: absolute;
+  inset: 0;
 }
 
-/* Profile modal animation */
-.relative .absolute {
-  animation: slideUp 0.2s ease-out;
+.slide-left-enter-from {
+  transform: translateX(100%);
+  opacity: 0;
+}
+.slide-left-enter-to {
+  transform: translateX(0%);
+  opacity: 1;
 }
 
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.slide-left-leave-from {
+  transform: translateX(0%);
+  opacity: 1;
+}
+.slide-left-leave-to {
+  transform: translateX(-100%);
+  opacity: 0;
 }
 </style>

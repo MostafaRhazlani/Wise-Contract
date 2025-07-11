@@ -68,7 +68,7 @@ const isSaving = ref(false);
 
 const saveEditorContent = async () => {
   try {
-    isSaving.value = true;
+    isSaving.value = true;  
     const formData = new FormData();
     formData.append("company_id", String(companyStore.company?.id));
     formData.append("type_id", String(route.params.type_id));
@@ -76,6 +76,7 @@ const saveEditorContent = async () => {
       const editor = props.editors[i];
       const jsonContent = editor.getJSON();
       const el = props.editorPageRefs[i];
+      
       if (!el) continue;
       const canvas = await html2canvas(el, { scale: 0.5 });
       const imageDataUrl = canvas.toDataURL("image/png");

@@ -27,7 +27,7 @@ const router = createRouter({
             }
         },
         {
-            path: '/editor/:type_id',
+            path: '/editor/:type_id/:template_id?',
             name: 'Editor',
             component: () => import('../views/EditorView.vue'),
             meta: {
