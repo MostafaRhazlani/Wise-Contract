@@ -199,6 +199,7 @@
   }
   
   .variable-node {
+    font-family: sans-serif;
     background-color: #dcfce7;
     border-radius: 4px;
     user-select: text;

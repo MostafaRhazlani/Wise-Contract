@@ -85,8 +85,7 @@ import { ref, computed, watch, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import { useTemplateStore } from '@/store/templateStore';
 import { useTypeStore } from '@/store/typeStore';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import html2pdf from 'html2pdf.js';
 import { generateHTML } from '@tiptap/html';
 import StarterKit from '@tiptap/starter-kit';
 import { Color } from '@tiptap/extension-color';
@@ -266,12 +265,12 @@ function replaceVariablesInJson(json: any, user: any): any {
   if (Array.isArray(json)) {
     return json.map(item => replaceVariablesInJson(item, user));
   } else if (json && typeof json === 'object') {
-    if (json.type === 'variable' && json.attrs?.label) {
+    if (json.type === 'variable' && json.attrs?.key) {
       // Replace variable node with a text node containing the value
-      const value = getValueByPath(user, json.attrs.label);
+      const value = getValueByPath(user, json.attrs.key);
       return {
         type: 'text',
-        text: value ?? `[${json.attrs.label}]`,
+        text: value ?? `[${json.attrs.key}]`,
         marks: json.marks
       };
     }
@@ -285,173 +284,99 @@ function replaceVariablesInJson(json: any, user: any): any {
   return json;
 }
 
-// Generate PDF for single user and return the canvas
-async function generateSingleUserCanvas(user: User, template: any): Promise<HTMLCanvasElement> {
-  return new Promise(async (resolve, reject) => {
-    try {
-      // Replace variables in the JSON
-      const contentJson = JSON.parse(template.content_json);
-      const replacedJson = replaceVariablesInJson(contentJson, user);
-      
-      // Generate HTML from the replaced JSON
-      const html = generateHTML(replacedJson, [
-        StarterKit,
-        Color,
-        TextStyle,
-        Highlight,
-        TextAlign.configure({ types: ['heading', 'paragraph'] }),
-        Underline,
-        Variable
-      ]);
-
-      // Render the HTML into the hidden div
-      if (pdfContentRef.value) {
-        pdfContentRef.value.innerHTML = html;
-      }
-
-      // Wait for content to render
-      await new Promise(resolve => setTimeout(resolve, 200));
-
-      if (!pdfContentRef.value) {
-        reject(new Error('PDF content container not found'));
-        return;
-      }
-
-      const canvas = await html2canvas(pdfContentRef.value, { 
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff',
-        width: pdfContentRef.value.scrollWidth,
-        height: pdfContentRef.value.scrollHeight
-      });
-
-      resolve(canvas);
-    } catch (error) {
-      reject(error);
-    }
-  });
+// Generate PDF for a single page and return the canvas
+async function renderHtmlForUser(pageContentJson: string, user: User): Promise<string> {
+  // Replace variables in the JSON
+  const contentJson = JSON.parse(pageContentJson);
+  const replacedJson = replaceVariablesInJson(contentJson, user);
+  // Generate HTML from the replaced JSON
+  const html = generateHTML(replacedJson, [
+    StarterKit,
+    Color,
+    TextStyle,
+    Highlight,
+    TextAlign.configure({ types: ['heading', 'paragraph'] }),
+    Underline,
+    Variable
+  ]);
+  return html;
 }
 
-// Generate PDF for single user (for single upload mode)
+// Generate PDF for single user (for single upload mode) using html2pdf
 async function generateSinglePDF(user: User, template: any): Promise<void> {
-  return new Promise(async (resolve, reject) => {
-    try {
-      const canvas = await generateSingleUserCanvas(user, template);
-
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
-
-      const imgData = canvas.toDataURL('image/png');
-      const imgWidth = 210;
-      const pageHeight = 295;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
+  try {
+    // Combine all pages' HTML
+    let combinedHtml = '';
+    const pages = template.pages || [template];
+    for (let i = 0; i < pages.length; i++) {
+      const html = await renderHtmlForUser(pages[i].content_json, user);
+      if (i < pages.length - 1) {
+        combinedHtml += `<div style='page-break-after: always;'>${html}</div>`;
+      } else {
+        combinedHtml += `<div>${html}</div>`;
       }
-
-      // Save PDF with template name for single user
-      const fileName = `${user.name.replace(/\s+/g, '_')}_${template.title || 'contract'}.pdf`;
-      pdf.save(fileName);
-      resolve();
-    } catch (error) {
-      reject(error);
     }
-  });
+    // Render the HTML into the hidden div
+    if (pdfContentRef.value) {
+      pdfContentRef.value.innerHTML = combinedHtml;
+    }
+    await new Promise(resolve => setTimeout(resolve, 200));
+    const fileName = `${user.name.replace(/\s+/g, '_')}_${template.title || 'contract'}.pdf`;
+    await html2pdf().set({
+      margin: 10,
+      filename: fileName,
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
+    }).from(pdfContentRef.value).save();
+  } catch (error) {
+    throw error;
+  }
 }
 
-// Generate combined PDF for multiple users (one PDF with multiple pages)
+// Generate combined PDF for multiple users (one PDF with multiple pages per user) using html2pdf
 async function generateMultipleUsersPDF(users: User[], template: any): Promise<void> {
-  return new Promise(async (resolve, reject) => {
-    try {
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
-
-      let isFirstPage = true;
-      let completed = 0;
-      let failed = 0;
-
-      for (let i = 0; i < users.length; i++) {
-        const user = users[i];
-        
-        try {
-          progressText.value = `Processing ${user.name}... (${i + 1}/${users.length})`;
-          
-          // Generate canvas for this user
-          const canvas = await generateSingleUserCanvas(user, template);
-          
-          // Add new page if not the first page
-          if (!isFirstPage) {
-            pdf.addPage();
-          }
-          
-          // Add user's content to the PDF
-          const imgData = canvas.toDataURL('image/png');
-          const imgWidth = 210;
-          const pageHeight = 295;
-          const imgHeight = (canvas.height * imgWidth) / canvas.width;
-          let heightLeft = imgHeight;
-          let position = 0;
-          
-          // Add the first page of this user's content
-          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-          heightLeft -= pageHeight;
-          
-          // Add additional pages if content is longer than one page
-          while (heightLeft >= 0) {
-            position = heightLeft - imgHeight;
-            pdf.addPage();
-            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-            heightLeft -= pageHeight;
-          }
-          
-          completed++;
-          isFirstPage = false;
-          
-          // Update progress
-          progressPercentage.value = Math.round(((i + 1) / users.length) * 100);
-          
-          // Small delay to prevent overwhelming the system
-          await new Promise(resolve => setTimeout(resolve, 100));
-          
-        } catch (error) {
-          console.error(`Failed to process ${user.name}:`, error);
-          failed++;
-        }
+  try {
+    let combinedHtml = '';
+    let completed = 0;
+    const allPages: string[] = [];
+    for (let i = 0; i < users.length; i++) {
+      const user = users[i];
+      progressText.value = `Processing ${user.name}... (${i + 1}/${users.length})`;
+      for (const page of template.pages || [template]) {
+        const html = await renderHtmlForUser(page.content_json, user);
+        allPages.push(html);
       }
-
-      if (completed === 0) {
-        reject(new Error('No users were processed successfully'));
-        return;
-      }
-
-      // Generate filename with timestamp and user count
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-      const fileName = `${template.title || 'contract'}_${completed}users_${timestamp}.pdf`;
-      
-      // Save the combined PDF
-      pdf.save(fileName);
-      
-      resolve();
-    } catch (error) {
-      reject(error);
+      completed++;
+      progressPercentage.value = Math.round(((i + 1) / users.length) * 100);
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
-  });
+    if (completed === 0) {
+      throw new Error('No users were processed successfully');
+    }
+    // Add page breaks only between pages, not after the last one
+    for (let i = 0; i < allPages.length; i++) {
+      if (i < allPages.length - 1) {
+        combinedHtml += `<div style='page-break-after: always;'>${allPages[i]}</div>`;
+      } else {
+        combinedHtml += `<div>${allPages[i]}</div>`;
+      }
+    }
+    // Render the HTML into the hidden div
+    if (pdfContentRef.value) {
+      pdfContentRef.value.innerHTML = combinedHtml;
+    }
+    await new Promise(resolve => setTimeout(resolve, 200));
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const fileName = `${template.title || 'contract'}_${completed}users_${timestamp}.pdf`;
+    await html2pdf().set({
+      margin: 10,
+      filename: fileName,
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
+    }).from(pdfContentRef.value).save();
+  } catch (error) {
+    throw error;
+  }
 }
 
 // Main generatePDF function (handles both single and multiple)
@@ -572,41 +497,5 @@ onMounted(async () => {
   height: 150px;
   object-fit: cover;
   border-radius: 4px;
-}
-
-#hide-content {
-  position: absolute;
-  left: -9999px;
-  top: 0;
-  visibility: visible;
-}
-
-/* PDF content styling */
-#pdf-content {
-  font-family: Arial, sans-serif;
-}
-
-#pdf-content h1, #pdf-content h2, #pdf-content h3 {
-  margin-top: 20px;
-  margin-bottom: 10px;
-}
-
-#pdf-content h1 {
-  font-size: 2em;
-  font-weight: bold;
-}
-
-#pdf-content h2 {
-  font-size: 1.5em;
-  font-weight: bold;
-}
-
-#pdf-content p {
-  margin-bottom: 10px;
-}
-
-#pdf-content ul, #pdf-content ol {
-  margin-bottom: 10px;
-  padding-left: 20px;
 }
 </style>

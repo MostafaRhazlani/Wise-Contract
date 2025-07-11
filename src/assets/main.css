@@ -30,3 +30,38 @@ body {
 .animate-spin {
   animation: spin 1s linear infinite;
 }
+
+
+/* PDF content styling */
+#hide-content {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  visibility: visible;
+}
+
+#pdf-content {
+  font-family: Arial, sans-serif;
+}
+
+#pdf-content h1, #pdf-content h2, #pdf-content h3 {
+  margin-top: 20px;
+  margin-bottom: 10px;
+}
+
+#pdf-content h1 {
+  font-size: 2em;
+}
+
+#pdf-content h2 {
+  font-size: 1.5em;
+}
+
+#pdf-content p {
+  margin-bottom: 10px;
+}
+
+#pdf-content ul, #pdf-content ol {
+  margin-bottom: 10px;
+  padding-left: 20px;
+}
