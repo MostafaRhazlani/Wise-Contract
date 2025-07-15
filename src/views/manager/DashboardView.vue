@@ -174,10 +174,13 @@ interface User {
   name: string;
   email: string;
   department: any;
+  department_id: number;
   post: any;
+  post_id: number;
   phone: string;
   avatar: string;
   role: any;
+  role_id: number;
   company_id: number;
 }
 
