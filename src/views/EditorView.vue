@@ -9,16 +9,17 @@
       <div class="flex h-full">
         <div class="flex">
           <!-- Floating Control Sidebar -->
-          <EditorControlSidebar @toggle-panel="togglePanel" />
+          <EditorControlSidebar :activePanel="activePanel || undefined" @toggle-panel="togglePanel" />
           <!-- Left Sidebar Panel -->
           <transition name="fade">
             <div v-if="activePanel" class="w-80 bg-white border-r border-gray-200 flex flex-col">
               <div class="p-4 overflow-y-auto flex-1">
                 <VariablesList v-if="activePanel === 'variables'" @select="insertVariable" />
-                <div v-if="activePanel === 'templates'">
+                <div v-else-if="activePanel === 'templates'">
                   <h3 class="font-semibold text-gray-800 mb-4">Templates</h3>
                   <TemplatesList @select-template="handleSelectTemplate" />
                 </div>
+                <UploadsComponent v-else-if="activePanel === 'uploads'" />
               </div>
             </div>
           </transition>
@@ -57,6 +58,7 @@
   import VariablesList from '@/components/VariablesList.vue';
   import EditorPageControls from '@/components/EditorPageControls.vue';
   import EditorPage from '@/components/EditorPage.vue';
+  import UploadsComponent from '@/components/UploadsComponent.vue';
 
   import { Editor } from '@tiptap/vue-3';
   import { ref, onMounted, onUnmounted, computed } from 'vue';
@@ -188,6 +190,11 @@
   onUnmounted(() => {
     editors.value.forEach(editor => editor.destroy());
     removeContent("editorContent");
+
+    if(activePanel) {
+      localStorage.removeItem('activePanel');
+      activePanel.value = null;
+    }
   });
 </script>
 
