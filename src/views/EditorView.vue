@@ -1,7 +1,7 @@
 <template>
   <div class="">
     <HeaderEditor :editors="editors" :editorPageRefs="editorPageRefs" />
-
+    <!-- Zoom Mode Controls removed -->
     <!-- Editor Layout -->
     <!-- Toolbar -->
     <EditorToolbar :editor="editors[activePageIndex]" />
@@ -24,26 +24,47 @@
             </div>
           </transition>
         </div>
-        <div class="flex flex-col w-full">
-          <div class="h-[calc(100vh-10rem)] w-full overflow-auto bg-gray-100">
-            <div class="flex items-center justify-center w-max h-max min-w-full min-h-full mx-auto my-10 relative">
+        <div class="flex flex-col w-[calc(100vw-4.5rem)]">
+          <div class="editor-zoomable-container overflow-auto w-full h-[calc(100vh-10rem)] bg-gray-100" ref="containerRef">
+            <div
+              class="shadow w-full h-full mx-auto"
+              :style="{
+                width: `${pageWidth * zoomLevel}px`,
+                height: `${pageHeight * zoomLevel}px`
+              }"
+            >
               <div 
                 v-for="(editor, index) in editors"
                 :ref="el => editorPageRefs[index] = el as HTMLElement | null"
-                :class="[index === activePageIndex ? 'z-10 opacity-100' : 'pointer-events-none absolute -z-10']"
-                :key="index" 
-                :style="{
-                  transform: `scale(${zoomLevel})`,
-                  transformOrigin: 'top',
-                }">
-                <EditorPage :editor="editor"/>
+                :key="index"
+                :class="['transition-transform duration-200 ease-in-out', index === activePageIndex ? 'z-10 opacity-100' : 'pointer-events-none absolute -z-10']"
+              >
+                <div class="w-full h-full">
+                  <EditorPage
+                    :editor="editor"
+                    :style="{
+                      transform: `scale(${zoomLevel})`,
+                      transformOrigin: 'top left',
+                      width: `${pageWidth}px`,
+                      height: `${pageHeight}px`,
+                    }"
+                  />
+                </div>
               </div>
             </div>
           </div>
           <!-- Page Controls Component -->
-          <EditorPageControls :zoom="zoomLevel" :pages="template_pages" :currentPage="activePageIndex"
-            @zoom-in="handleZoomIn" @zoom-out="handleZoomOut" @set-zoom="zoomLevel = $event" @add-page="handleAddPage"
-            @fullscreen="handleFullscreen" @select-page="handleSelectPage"/>
+          <EditorPageControls 
+            :zoom="zoomLevel" 
+            :pages="currentPages" 
+            :editors="editors"
+            :currentPage="activePageIndex"
+            @zoom-in="handleZoomIn" 
+            @zoom-out="handleZoomOut" 
+            @set-zoom="val => zoomLevel = val" 
+            @add-page="handleAddPage"
+            @fullscreen="handleFullscreen" 
+            @select-page="handleSelectPage"/>
         </div>
       </div>
     </div>
@@ -61,7 +82,7 @@
   import UploadsComponent from '@/components/UploadsComponent.vue';
 
   import { Editor } from '@tiptap/vue-3';
-  import { ref, onMounted, onUnmounted, computed } from 'vue';
+  import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
   import type { Ref } from 'vue';
   import { storeToRefs } from 'pinia';
 
@@ -94,6 +115,26 @@
 
   const { activePanel } = storeToRefs(editorStore);
   const { togglePanel } = editorStore;
+
+  const containerRef = ref<HTMLElement | null>(null);
+
+  const pageWidth = 794;
+  const pageHeight = 1123;
+  const zoomMode = ref<'fit-width' | 'fit-height' | 'custom'>('fit-width');
+
+  function handleZoomIn() {
+    zoomMode.value = 'custom';
+    zoomLevel.value = Math.min(zoomLevel.value + 0.1, 2);
+  }
+  function handleZoomOut() {
+    zoomMode.value = 'custom';
+    zoomLevel.value = Math.max(zoomLevel.value - 0.1, 0.5);
+  }
+
+  function handleResize() {
+    // Just trigger recompute
+    zoomMode.value = zoomMode.value;
+  }
 
   function createEditor(content = '') {
     return new Editor({
@@ -156,13 +197,16 @@
     const template = templateStore.templates.find(el => el.id === Number(route.params.template_id));
     return template?.pages ?? [];
   })
+
+  const currentPages = computed(() => {
+    return editors.value.map((editor, index) => {
+      const templatePage = template_pages.value[index];
+      return {
+        ...(templatePage || {})
+      }
+    })
+  });
   
-  const handleZoomIn = () => {
-    zoomLevel.value = Math.min(zoomLevel.value + 0.1, 2);
-  };
-  const handleZoomOut = () => {
-    zoomLevel.value = Math.max(zoomLevel.value - 0.1, 0.5);
-  };
   const handleFullscreen = () => {
     const elem = document.documentElement;
     if (!isFullscreen.value) {
@@ -283,4 +327,21 @@
     top: 0;
     visibility: visible;
   }
+
+  .scale-transition {
+    transition: transform 0.2s ease;
+  }
+  .transform-wrapper {
+    width: max-content;
+    height: max-content;
+  }
+
+  .editor-zoomable-container {
+    padding: 2rem; /* Optional: vertical padding */
+    box-sizing: border-box;
+    height: 100%;
+    width: 100%;
+    overflow: auto;
+  }
+
 </style>
