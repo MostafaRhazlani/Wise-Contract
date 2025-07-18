@@ -15,7 +15,7 @@ export const useEditorStore = defineStore('editor', () => {
     }
   }
 
-  const isRightSidebarOpen = computed(() => activePanel.value !== null);
+  const isLeftSidebarOpen = computed(() => activePanel.value !== null);
 
   watch(activePanel, (newPanel) => {
     if (newPanel) {
@@ -39,7 +39,7 @@ export const useEditorStore = defineStore('editor', () => {
 
   return {
     activePanel,
-    isRightSidebarOpen,
+    isLeftSidebarOpen,
     togglePanel,
     closeSidebar,
   };

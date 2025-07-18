@@ -7,5 +7,13 @@ module.exports = {
   theme: {
     extend: {},
   },
-  plugins: [],
+  plugins: [
+    // function ({ addUtilites, theme }) {
+    //   addUtilites({
+    //     '.inset-shadow-green-500': {
+    //       'boc-shadow': `inset 0 2px 8px 0 ${theme('colors.green.500')}`
+    //     }
+    //   })
+    // }
+  ],
 }

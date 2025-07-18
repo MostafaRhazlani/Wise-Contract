@@ -18,25 +18,28 @@
                 </div>
                 <div v-if="showLayersModal"
                     class="absolute bottom-12 right-0 bg-black bg-opacity-30 rounded-lg flex items-center justify-center z-50">
-                    <div class="rounded shadow-lg p-2 flex items-center" style="width:400px;">
-                        <button class="p-1 mr-2 rounded hover:bg-gray-200 disabled:opacity-30 disabled:cursor-no-drop"
+                    <div class="rounded shadow-lg p-2 flex items-center" style="width:360px;">
+                        <button class="absolute -left-4 p-1 rounded-full hover:bg-gray-200 bg-gray-500 disabled:opacity-70 disabled:cursor-no-drop"
                             :disabled="!canScrollLeft" @click="scrollLeft" v-if="pages.length > VISIBLE_COUNT">
-                            <ChevronLeft :size="24" />
+                            <ChevronLeft :size="24" class="text-white hover:text-gray-700" />
                         </button>
                         <ul class="flex items-center gap-3 overflow-hidden">
                             <li class="w-20 h-20" v-for="(page, idx) in visiblePages" :key="scrollIndex + idx">
-                                <button class="w-full h-full px-2 py-1 rounded hover:bg-gray-100"
+                                <div class="w-full h-full px-2 py-1 rounded hover:bg-gray-100"
                                     :class="{ 'bg-gray-200': (scrollIndex + idx) === currentPage }"
                                     @click="selectPage(scrollIndex + idx)">
-                                    <img class="w-full h-full object-contain" :src="storageBaseUrl + page.image_path" alt="">
-                                </button>
-                                <h1 class="text-white">{{ idx }}</h1>
+                                    <EditorPageThumbnail
+                                        v-if="props.editors[scrollIndex + idx]"
+                                        :html="props.editors[scrollIndex + idx].getHTML()"
+                                        class="w-full h-full editor-thumbnail break-words"
+                                    />
+                                </div>
                             </li>
                         </ul>
-                        <button class="p-1 ml-2 rounded hover:bg-gray-200 disabled:opacity-30 disabled:cursor-no-drop"
+                        <button class="absolute -right-4 p-1 rounded-full hover:bg-gray-200 bg-gray-500 disabled:opacity-70 disabled:cursor-no-drop"
                             :disabled="!canScrollRight" @click="scrollRight"
                             v-if="pages.length > VISIBLE_COUNT">
-                            <ChevronRight :size="24" />
+                            <ChevronRight :size="24" class="text-white hover:text-gray-700" />
                         </button>
                     </div>
                 </div>
@@ -57,10 +60,10 @@
 
 <script setup lang="ts">
 import { CopyPlus, Maximize2, Minus, Plus, Layers, ChevronLeft, ChevronRight } from 'lucide-vue-next';
-import { ref, computed } from 'vue';
+import { ref, computed, nextTick } from 'vue';
+import EditorPageThumbnail from '@/components/EditorPageThumbnail.vue';
 
 const showLayersModal = ref<boolean>(false);
-const storageBaseUrl = import.meta.env.VITE_STORAGE_BASE_URL;
 
 const scrollIndex = ref(0);
 const VISIBLE_COUNT = 4;
@@ -69,6 +72,7 @@ const props = defineProps<{
     zoom: number,
     pages: any[],
     currentPage: number,
+    editors: any[], // Accept editors as a prop
 }>();
 
 const visiblePages = computed(() => {
@@ -146,5 +150,17 @@ const selectPage = (index: number) => {
 
 .zoom-slider:focus::-webkit-slider-thumb {
     box-shadow: 0 0 2px 6px rgba(144, 161, 185, 0.4);
+}
+
+.editor-thumbnail {
+    width: 540px;
+    height: 605px;
+    overflow: hidden;
+    border-radius: 6px;
+    background: white;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    transform: scale(0.12);
+    transform-origin: top left;
+    pointer-events: none;
 }
 </style>

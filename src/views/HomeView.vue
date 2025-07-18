@@ -52,7 +52,7 @@
             class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6"
           >
             <div
-              v-for="n in 3"
+              v-for="n in filteredTemplates.length"
               :key="n"
               class="bg-white rounded-lg shadow-sm animate-pulse"
             >
