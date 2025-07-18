@@ -89,6 +89,26 @@
                         <Heading2 :size="20" />
                     </button>
                 </div>
+
+                <div class="w-px h-6 bg-gray-200 mx-1"></div>
+
+                <!-- Columns Insert -->
+                <div class="flex items-center">
+                    <button @click="showColumnDialog = true"
+                        class="p-2 text-gray-500 hover:text-green-500 hover:bg-green-100 rounded-md transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24"><rect x="3" y="5" width="4" height="14" rx="1" fill="currentColor"/><rect x="9" y="5" width="4" height="14" rx="1" fill="currentColor"/><rect x="15" y="5" width="4" height="14" rx="1" fill="currentColor"/></svg>
+                    </button>
+                    <div v-if="showColumnDialog" class="absolute z-50 bg-white border p-4 rounded shadow top-12 -translate-x-1/2">
+                        <label class="block mb-2">How many columns?</label>
+                        <select v-model="columnCount" class="border rounded p-1 mb-2 w-full">
+                            <option v-for="n in [2,3,4,5,6]" :key="n" :value="n">{{ n }}</option>
+                        </select>
+                        <div class="flex space-x-2">
+                            <button @click="addColumns" class="px-3 py-1 bg-green-500 text-white rounded">Insert</button>
+                            <button @click="showColumnDialog = false" class="px-3 py-1 bg-gray-200 rounded">Cancel</button>
+                        </div>
+                    </div>
+                </div>
             </div>
             <!-- Color Dropdown -->
             <div v-if="showColorPicker"
@@ -174,4 +194,14 @@ onMounted(() => {
 onUnmounted(() => {
     document.removeEventListener('click', handleClickOutside);
 });
+
+const showColumnDialog = ref(false)
+const columnCount = ref(2)
+
+function addColumns() {
+    if (props.editor) {
+        props.editor.commands.insertColumns(columnCount.value)
+    }
+    showColumnDialog.value = false
+}
 </script>

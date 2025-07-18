@@ -19,15 +19,14 @@
                   <h3 class="font-semibold text-gray-800 mb-4">Templates</h3>
                   <TemplatesList @select-template="handleSelectTemplate" />
                 </div>
-                <UploadsComponent v-else-if="activePanel === 'uploads'" />
               </div>
             </div>
           </transition>
         </div>
-        <div class="flex flex-col w-[calc(100vw-4.5rem)]">
+        <div :class="['flex flex-col', activePanel ? 'w-[calc(100vw-24.5rem)]' : 'w-[calc(100vw-4.5rem)]']">
           <div class="editor-zoomable-container overflow-auto w-full h-[calc(100vh-10rem)] bg-gray-100" ref="containerRef">
             <div
-              class="shadow w-full h-full mx-auto"
+              class="flex shadow w-full h-full mx-auto relative"
               :style="{
                 width: `${pageWidth * zoomLevel}px`,
                 height: `${pageHeight * zoomLevel}px`
@@ -39,7 +38,7 @@
                 :key="index"
                 :class="['transition-transform duration-200 ease-in-out', index === activePageIndex ? 'z-10 opacity-100' : 'pointer-events-none absolute -z-10']"
               >
-                <div class="w-full h-full">
+                <div class="w-full h-full relative">
                   <EditorPage
                     :editor="editor"
                     :style="{
@@ -48,7 +47,19 @@
                       width: `${pageWidth}px`,
                       height: `${pageHeight}px`,
                     }"
+                    ref="editorPageRef"
                   />
+                  <!-- Paragraph delete button as component -->
+                  <template v-for="block in getVisibleBlocks(editor, index)" :key="block.key">
+                    <ParagraphDeleteButton
+                      :top="block.top"
+                      :left="block.left"
+                      :pageIndex="index"
+                      :pos="block.pos"
+                      :show="block.active && block.type === 'paragraph'"
+                      @delete="deleteParagraph"
+                    />
+                  </template>
                 </div>
               </div>
             </div>
@@ -79,10 +90,9 @@
   import VariablesList from '@/components/VariablesList.vue';
   import EditorPageControls from '@/components/EditorPageControls.vue';
   import EditorPage from '@/components/EditorPage.vue';
-  import UploadsComponent from '@/components/UploadsComponent.vue';
-
   import { Editor } from '@tiptap/vue-3';
-  import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
+  import { GripVertical } from 'lucide-vue-next';
+  import { ref, onMounted, onUnmounted, computed, watch, nextTick, defineComponent, h } from 'vue';
   import type { Ref } from 'vue';
   import { storeToRefs } from 'pinia';
 
@@ -91,14 +101,17 @@
   import { useVariablesStore } from '@/store/variablesStore';
 
   import StarterKit from '@tiptap/starter-kit';
-  import TextStyle from '@tiptap/extension-text-style';
-  import Underline from "@tiptap/extension-underline";
+  import { TextStyle } from '@tiptap/extension-text-style';
   import Color from '@tiptap/extension-color';
   import TextAlign from '@tiptap/extension-text-align';
+  import Image from '@tiptap/extension-image';
+  import Focus from '@tiptap/extension-focus';
   import { Variable } from "@/extensions/VariableNode";
+  import ResizableImage from '@/extensions/image/resizableImage';
+  import { Columns, Column } from '@/extensions/columns/columns';
   import { getContent, removeContent, setContent } from "@/plugins/indexedDb";
   import { useRouter, useRoute } from 'vue-router'
-
+  import { ElDialog, ElButton } from 'element-plus'
 
   const router = useRouter();
   const route = useRoute();
@@ -131,24 +144,26 @@
     zoomLevel.value = Math.max(zoomLevel.value - 0.1, 0.5);
   }
 
-  function handleResize() {
-    // Just trigger recompute
-    zoomMode.value = zoomMode.value;
-  }
-
   function createEditor(content = '') {
     return new Editor({
       content,
       extensions: [
         StarterKit,
-        Underline,
         TextStyle,
+        Image,
         Color,
         TextAlign.configure({ types: ["heading", "paragraph"] }),
         Variable.configure({
           HTMLAttributes: { class: "variable-node" },
           getVariables: () => variablesStore.variables,
         }),
+        Columns,
+        Column,
+        Focus.configure({
+          className: 'selected-node',
+          mode: 'all',
+        }),
+        ResizableImage, // <-- Add this line
       ],
       onUpdate: () => {
         // Save all editors' content to IndexedDB on any update
@@ -222,6 +237,58 @@
     }
   };
 
+  // Add paste and drop event listeners for image insertion
+  const handlePaste = (event: ClipboardEvent) => {
+    const items = event.clipboardData?.items;
+    if (items) {
+      for (const item of items) {
+        if (item.type.indexOf('image') !== -1) {
+          const file = item.getAsFile();
+          if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              const src = e.target?.result as string;
+              const editor = editors.value[activePageIndex.value];
+              if (editor) {
+                editor.commands.insertContent({
+                  type: 'resizableImage',
+                  attrs: { src, alt: 'Image', width: 150 }
+                });
+              }
+            };
+            reader.readAsDataURL(file);
+            event.preventDefault();
+            break;
+          }
+        }
+      }
+    }
+  };
+
+  const handleDrop = (event: DragEvent) => {
+    const files = event.dataTransfer?.files;
+    if (files) {
+      for (const file of files) {
+        if (file.type.indexOf('image') !== -1) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const src = e.target?.result as string;
+            const editor = editors.value[activePageIndex.value];
+            if (editor) {
+              editor.commands.insertContent({
+                type: 'resizableImage',
+                attrs: { src, alt: 'Image', width: 150 }
+              });
+            }
+          };
+          reader.readAsDataURL(file);
+          event.preventDefault();
+          break;
+        }
+      }
+    }
+  };
+
   onMounted(async () => {
     const pagesContent = await getContent("editorContent");
     if (pagesContent && Array.isArray(pagesContent)) {
@@ -229,6 +296,10 @@
     } else if (editors.value.length === 0) {
       editors.value.push(createEditor());
     }
+
+      containerRef.value?.addEventListener('paste', handlePaste);
+      containerRef.value?.addEventListener('drop', handleDrop);
+
   });
 
   onUnmounted(() => {
@@ -239,6 +310,77 @@
       localStorage.removeItem('activePanel');
       activePanel.value = null;
     }
+
+    if(containerRef.value) {
+      containerRef.value.removeEventListener('paste', handlePaste);
+      containerRef.value.removeEventListener('drop', handleDrop);
+    }
+  });
+
+  // Add to getVisibleBlocks: also return block type
+  function getVisibleBlocks(editor: Editor, pageIndex: number) {
+    const blocks: any[] = [];
+    const view = editor.view;
+    const selectionPos = editor.state.selection.from;
+    const containerRect = editorPageRefs.value[pageIndex]?.getBoundingClientRect();
+    if (!containerRect) return blocks;
+    view.dom.querySelectorAll('p,div,li').forEach((el, idx) => {
+      const pos = view.posAtDOM(el, 0);
+      const rect = el.getBoundingClientRect();
+      const isActive = selectionPos >= pos && selectionPos <= pos + el.textContent.length + 1;
+      blocks.push({
+        key: idx,
+        top: rect.top - containerRect.top + el.offsetHeight / 2 - 16,
+        left: -40,
+        pageIndex,
+        pos,
+        active: isActive,
+        type: el.nodeName.toLowerCase(),
+      });
+    });
+    return blocks;
+  }
+
+  // Delete paragraph at position
+  function deleteParagraph(pageIndex: number, pos: number) {
+    const editor = editors.value[pageIndex];
+    if (!editor) return;
+    editor.commands.command(({ tr, state }) => {
+      const $pos = state.doc.resolve(pos);
+      const node = $pos.nodeAfter;
+      if (!node || node.type.name !== 'paragraph') return false;
+      tr.delete(pos, pos + node.nodeSize);
+      return true;
+    });
+  }
+
+  // ParagraphDeleteButton component
+  const ParagraphDeleteButton = defineComponent({
+    props: {
+      top: Number,
+      left: Number,
+      pageIndex: Number,
+      pos: Number,
+      show: Boolean,
+    },
+    emits: ['delete'],
+    setup(props, { emit }) {
+      return () =>
+        props.show
+          ? h(
+              'button',
+              {
+                class:
+                  'absolute z-40 bg-white border rounded w-7 h-7 flex items-center justify-center shadow hover:bg-red-100 text-red-500 paragraph-delete-btn',
+                style: { top: `${props.top}px`, left: `${props.left - 32}px` },
+                onClick: () => emit('delete', props.pageIndex, props.pos),
+                title: 'Delete paragraph',
+                type: 'button',
+              },
+              '🗑'
+            )
+          : null;
+    },
   });
 </script>
 
@@ -257,7 +399,7 @@
   }
   
   .ProseMirror p {
-    margin: 1em 0;
+    padding: 8px;
   }
   
   .ProseMirror h1 {
@@ -344,4 +486,22 @@
     overflow: auto;
   }
 
+  .selected-node {
+    background: #f5faff;
+    border-radius: 4px;
+    padding: 8px;
+    transition: background 0.2s;
+  }
+
+  /* Optional: style for the "+" button and popup */
+  .plus-block-btn {
+    transition: background 0.2s;
+  }
+  .block-action-popup {
+    min-width: 120px;
+  }
+
+  .paragraph-delete-btn {
+  transition: background 0.2s;
+}
 </style>

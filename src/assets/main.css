@@ -65,3 +65,11 @@ body {
   margin-bottom: 10px;
   padding-left: 20px;
 }
+
+.column {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 8px;
+  background: #eaf3fa;
+  border-radius: 4px;
+}

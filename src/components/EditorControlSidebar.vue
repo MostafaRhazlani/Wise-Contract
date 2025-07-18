@@ -16,20 +16,12 @@
         </div>
         <span :class="['text-xs font-semibold transition-colors', props.activePanel === 'templates' ? 'text-green-600' : 'text-gray-600', 'group-hover:text-green-600']">Templates</span>
       </button>
-      
-      <!-- Upload Button -->
-      <button @click="$emit('toggle-panel', 'uploads')" title="Upload" :class="['group flex flex-col items-center justify-center space-y-1', props.activePanel === 'uploads' ? 'text-green-600' : '']">
-        <div :class="['p-1 transition-all duration-200 group-hover:bg-gray-100 rounded-md', props.activePanel === 'uploads' ? 'shadow-md' : '']">
-          <CloudUpload :size="24" :class="[props.activePanel === 'uploads' ? 'text-green-600' : 'text-gray-600', 'transition-colors group-hover:text-green-600']" />
-        </div>
-        <span :class="['text-xs font-semibold transition-colors', props.activePanel === 'uploads' ? 'text-green-600' : 'text-gray-600', 'group-hover:text-green-600']">Upload</span>
-      </button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { FileJson2, LayoutTemplate, CloudUpload } from 'lucide-vue-next';
+import { FileJson2, LayoutTemplate } from 'lucide-vue-next';
 
 defineEmits(['toggle-panel']);
 const props = defineProps<{ activePanel?: string }>();
