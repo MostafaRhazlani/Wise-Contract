@@ -89,10 +89,9 @@ import html2pdf from 'html2pdf.js';
 import { generateHTML } from '@tiptap/html';
 import StarterKit from '@tiptap/starter-kit';
 import { Color } from '@tiptap/extension-color';
-import TextStyle from '@tiptap/extension-text-style';
+import { TextStyle } from '@tiptap/extension-text-style';
 import Highlight from '@tiptap/extension-highlight';
 import TextAlign from '@tiptap/extension-text-align';
-import Underline from '@tiptap/extension-underline';
 import { Variable } from '@/extensions/VariableNode';
 
 interface User {
@@ -296,7 +295,6 @@ async function renderHtmlForUser(pageContentJson: string, user: User): Promise<s
     TextStyle,
     Highlight,
     TextAlign.configure({ types: ['heading', 'paragraph'] }),
-    Underline,
     Variable
   ]);
   return html;
