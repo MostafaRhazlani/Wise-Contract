@@ -41,7 +41,7 @@ import { useAuthStore } from "@/store/authStore";
 import { useCompanyStore } from "@/store/companyStore";
 import { useTemplateStore } from "@/store/templateStore";
 import { ElMessage } from 'element-plus';
-import { Editor } from "@tiptap/vue-3";
+import { getContent } from "@/plugins/indexedDb";
 import axios from "axios";
 import html2canvas from "html2canvas";
 
@@ -51,7 +51,6 @@ const companyStore = useCompanyStore();
 const templateStore = useTemplateStore();
 const route = useRoute();
 const props = defineProps<{
-    editors: Editor[],
     editorPageRefs: (HTMLElement | null)[]
 }>();
 
@@ -70,11 +69,15 @@ const saveEditorContent = async () => {
   try {
     isSaving.value = true;  
     const formData = new FormData();
+    const jsonContent = await getContent('editorContent');
     formData.append("company_id", String(companyStore.company?.id));
     formData.append("type_id", String(route.params.type_id));
-    for (let i = 0; i < props.editors.length; i++) {
-      const editor = props.editors[i];
-      const jsonContent = editor.getJSON();
+    for (let i = 0; i < jsonContent.allContent.length; i++) {
+      const jsonContentWithSize = {
+        width: jsonContent.width,
+        height: jsonContent.height,
+        content: jsonContent.allContent
+      }
       const el = props.editorPageRefs[i];
       
       if (!el) continue;
@@ -87,7 +90,7 @@ const saveEditorContent = async () => {
         console.warn(`Page ${i + 1} could not be captured. Skipping.`);
         continue;
       }
-      formData.append('content_json[]', JSON.stringify(jsonContent));
+      formData.append('content_json[]', JSON.stringify(jsonContentWithSize));
       formData.append('image_path[]', imageFile);
     }
     const response = await axios.post("/template/save", formData, {

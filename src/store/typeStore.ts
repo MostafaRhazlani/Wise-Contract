@@ -6,6 +6,7 @@ import { TypeState, Type } from '@/types/type';
 export const useTypeStore = defineStore("type", {
   state: (): TypeState => ({
     types: [] as Type[],
+    type: null,
     loading: false,
     error: null,
   }),
@@ -23,5 +24,19 @@ export const useTypeStore = defineStore("type", {
         this.loading = false;
       }
     },
+
+    async getType(id: number) {
+      this.loading = true;
+      this.error = null;
+      try {
+        const response = await axios.get(`/type/${id}`);
+        this.type = response.data.type;
+      } catch (error: any) {
+        this.error = "Failed to fetch type.";
+        console.error("Error fetching type:", error);
+      } finally {
+        this.loading = false;
+      }
+    }
   },
 }); 

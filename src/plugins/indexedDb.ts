@@ -17,7 +17,16 @@ export async function setContent(key: string, value: any) {
   return new Promise<void>((resolve, reject) => {
     const tx = db.transaction('editorContent', 'readwrite');
     const store = tx.objectStore('editorContent');
-    store.put(value, key);
+
+    try {
+      const safeValue = JSON.parse(JSON.stringify(value));
+      store.put(safeValue, key);
+    } catch (error) {
+      console.error("store data in indexedDB failed", error);
+      reject(error);
+      return;
+    }
+    
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });

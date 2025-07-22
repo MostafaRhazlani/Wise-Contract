@@ -109,6 +109,11 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="w-px h-6 bg-gray-200 mx-1"></div>
+
+                <!-- Size selector -->
+                <SizeSelector/>
             </div>
             <!-- Color Dropdown -->
             <div v-if="showColorPicker"
@@ -125,6 +130,9 @@
 </template>
 
 <script setup lang="ts">
+
+import SizeSelector from '@/components/SizeSelector.vue';
+
 import { Editor } from "@tiptap/vue-3";
 import {
     Bold,

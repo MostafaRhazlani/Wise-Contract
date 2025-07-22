@@ -305,9 +305,13 @@ async function generateSinglePDF(user: User, template: any): Promise<void> {
   try {
     // Combine all pages' HTML
     let combinedHtml = '';
-    const pages = template.pages || [template];
+    const pages = template.pages;
+
     for (let i = 0; i < pages.length; i++) {
-      const html = await renderHtmlForUser(pages[i].content_json, user);
+      const parseContent = JSON.parse(pages[i].content_json);
+      const getContentJson = parseContent.content[i];
+      
+      const html = await renderHtmlForUser(JSON.stringify(getContentJson), user);
       if (i < pages.length - 1) {
         combinedHtml += `<div style='page-break-after: always;'>${html}</div>`;
       } else {
@@ -320,11 +324,15 @@ async function generateSinglePDF(user: User, template: any): Promise<void> {
     }
     await new Promise(resolve => setTimeout(resolve, 200));
     const fileName = `${user.name.replace(/\s+/g, '_')}_${template.title || 'contract'}.pdf`;
+    const pxTomm = (px: number): number => px * 0.264583;
+    const widthCm = pxTomm(JSON.parse(pages[0].content_json).width);
+    const heightCm = pxTomm(JSON.parse(pages[0].content_json).height);
+    
     await html2pdf().set({
       margin: 10,
       filename: fileName,
       html2canvas: { scale: 2, useCORS: true },
-      jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
+      jsPDF: { orientation: widthCm > heightCm ? 'landscape' : 'portrait', unit: 'mm', format: [widthCm, heightCm] }
     }).from(pdfContentRef.value).save();
   } catch (error) {
     throw error;
@@ -337,12 +345,32 @@ async function generateMultipleUsersPDF(users: User[], template: any): Promise<v
     let combinedHtml = '';
     let completed = 0;
     const allPages: string[] = [];
+
+    const firstPage = template.pages?.[0];
+    
+    
+    const parseFirstPage = JSON.parse(firstPage.content_json);
+    const pxTomm = (px: number): number => px * 0.264583;
+    const widthMm = pxTomm(parseFirstPage.width);
+    const heightMm = pxTomm(parseFirstPage.height);
+    const isLandscape = widthMm > heightMm;
     for (let i = 0; i < users.length; i++) {
       const user = users[i];
       progressText.value = `Processing ${user.name}... (${i + 1}/${users.length})`;
-      for (const page of template.pages || [template]) {
-        const html = await renderHtmlForUser(page.content_json, user);
-        allPages.push(html);
+
+      // Process each page for the current user
+      const pages = template.pages;
+      for (let j = 0; j < pages.length; j++) {
+        const page = pages[j];
+        const parseContent = JSON.parse(page.content_json);
+        const getContentJson = parseContent.content[j];
+        const html = await renderHtmlForUser(JSON.stringify(getContentJson), user);
+
+        if (i < users.length - 1 || j < pages.length - 1) {
+          allPages.push(`<div style='page-break-after: always;'>${html}</div>`);
+        } else {
+          allPages.push(`<div>${html}</div>`);
+        }
       }
       completed++;
       progressPercentage.value = Math.round(((i + 1) / users.length) * 100);
@@ -351,14 +379,9 @@ async function generateMultipleUsersPDF(users: User[], template: any): Promise<v
     if (completed === 0) {
       throw new Error('No users were processed successfully');
     }
-    // Add page breaks only between pages, not after the last one
-    for (let i = 0; i < allPages.length; i++) {
-      if (i < allPages.length - 1) {
-        combinedHtml += `<div style='page-break-after: always;'>${allPages[i]}</div>`;
-      } else {
-        combinedHtml += `<div>${allPages[i]}</div>`;
-      }
-    }
+    
+    combinedHtml = allPages.join('');
+
     // Render the HTML into the hidden div
     if (pdfContentRef.value) {
       pdfContentRef.value.innerHTML = combinedHtml;
@@ -369,8 +392,15 @@ async function generateMultipleUsersPDF(users: User[], template: any): Promise<v
     await html2pdf().set({
       margin: 10,
       filename: fileName,
-      html2canvas: { scale: 2, useCORS: true },
-      jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
+      html2canvas: { 
+        scale: 2, 
+        useCORS: true,
+      },
+      jsPDF: { 
+        orientation: isLandscape ? 'landscape' : 'portrait', 
+        unit: 'mm', 
+        format: [widthMm, heightMm]  
+      }
     }).from(pdfContentRef.value).save();
   } catch (error) {
     throw error;
@@ -383,6 +413,7 @@ async function generatePDF() {
     String(template.id) === String(selectedTemplate.value)
   );
   
+  
   if (!currentTemplate) {
     ElMessage.error('No template selected');
     return;
@@ -394,8 +425,6 @@ async function generatePDF() {
       ElMessage.error('No users selected');
       return;
     }
-
-    console.log('Starting combined PDF generation for:', usersArray.value.length, 'users');
 
     generating.value = true;
     progressPercentage.value = 0;
