@@ -32,7 +32,9 @@ export const useAuthStore = defineStore('auth', () => {
                 localStorage.setItem('userRole', response.data.user.role_id.toString())
 
                 // Redirect based on role
-                if (response.data.user.role_id === 3) {
+                if (response.data.user.role_id === 1) {
+                    router.push({ name: 'AdminDashboard' })
+                } else if (response.data.user.role_id === 3) {
                     router.push({ name: 'ManagerDashboard' })
                 } else if (response.data.user.role_id === 4) {
                     router.push({ name: 'Home' })

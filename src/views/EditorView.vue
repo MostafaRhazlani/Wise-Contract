@@ -1,10 +1,11 @@
 <template>
+  <!-- filepath: c:\Users\zougu\OneDrive\Desktop\Wise-Contract\src\views\EditorView.vue -->
   <div class="">
     <HeaderEditor :editors="editors" :editorPageRefs="editorPageRefs" />
 
     <!-- Editor Layout -->
     <!-- Toolbar -->
-    <EditorToolbar :editor="editors[activePageIndex]" />
+    <EditorToolbar :editor="editors[activePageIndex]" @size-changed="handleSizeChanged" />
     <div class="h-[calc(100vh-6.8rem)]">
       <div class="flex h-full">
         <div class="flex">
@@ -25,7 +26,10 @@
         </div>
         <div class="flex flex-col w-full">
           <div class="h-[calc(100vh-10rem)] w-full overflow-auto bg-gray-100">
-            <div class="flex items-center justify-center w-max h-max min-w-full min-h-full mx-auto my-10 relative">
+            <div 
+              class="flex items-center justify-center mx-auto my-10 relative"
+              :style="editorContainerStyle"
+            >
               <div 
                 v-for="(editor, index) in editors"
                 :ref="el => editorPageRefs[index] = el as HTMLElement | null"
@@ -50,6 +54,7 @@
 </template>
 
 <script setup lang="ts">
+// filepath: c:\Users\zougu\OneDrive\Desktop\Wise-Contract\src\views\EditorView.vue
   import HeaderEditor from '@/components/HeaderEditor.vue';
   import EditorToolbar from '@/components/EditorToolbar.vue';
   import TemplatesList from '@/components/TemplatesList.vue';
@@ -66,6 +71,7 @@
   import { useEditorStore } from "@/store/editorStore";
   import { useTemplateStore } from "@/store/templateStore";
   import { useVariablesStore } from '@/store/variablesStore';
+  import { useTypeStore } from '@/store/typeStore';
 
   import StarterKit from '@tiptap/starter-kit';
   import TextStyle from '@tiptap/extension-text-style';
@@ -89,9 +95,50 @@
   const editorStore = useEditorStore();
   const templateStore = useTemplateStore();
   const variablesStore = useVariablesStore();
+  const typeStore = useTypeStore();
 
   const { activePanel } = storeToRefs(editorStore);
   const { togglePanel } = editorStore;
+
+  // Get dimensions based on type_id
+  const getTypeDimensions = (typeId: number) => {
+    const currentType = typeStore.types.find(type => type.id === typeId);
+    
+    if (currentType && currentType.width && currentType.height) {
+      return { width: currentType.width, height: currentType.height };
+    }
+    
+    // Fallback to hardcoded dimensions based on type_id
+    switch (typeId) {
+      case 1: // Contract A4
+      case 2: // CV A4
+        return { width: 794, height: 1123 };
+      case 3: // Contract A5
+      case 4: // CV A5
+        return { width: 559, height: 794 };
+      case 5: // Contract A2
+      case 6: // CV A2
+        return { width: 1587, height: 2244 };
+      default:
+        return { width: 794, height: 1123 }; // Default A4
+    }
+  };
+
+  // Computed for editor container style based on current type
+  const editorContainerStyle = computed(() => {
+    const typeId = Number(route.params.type_id);
+    const dimensions = getTypeDimensions(typeId);
+    
+    const scaledWidth = dimensions.width * zoomLevel.value + 80;
+    const scaledHeight = dimensions.height * zoomLevel.value + 80;
+    
+    return {
+      width: `${scaledWidth}px`,
+      height: `${scaledHeight}px`,
+      minWidth: `${scaledWidth}px`,
+      minHeight: `${scaledHeight}px`
+    };
+  });
 
   function createEditor(content = '') {
     return new Editor({
@@ -150,6 +197,11 @@
     activePageIndex.value = index;
   };
 
+  const handleSizeChanged = (size: string) => {
+    console.log('Page size changed to:', size);
+    // The toolbar will handle navigation to the correct type
+  };
+
   const template_pages = computed(() => {
     const template = templateStore.templates.find(el => el.id === Number(route.params.template_id));
     return template?.pages ?? [];
@@ -177,6 +229,9 @@
   };
 
   onMounted(async () => {
+    // Load types first
+    await typeStore.getTypes();
+    
     const pagesContent = await getContent("editorContent");
     if (pagesContent && Array.isArray(pagesContent)) {
       editors.value = pagesContent.map((content: any) => createEditor(content));

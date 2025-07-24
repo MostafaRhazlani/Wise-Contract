@@ -1,6 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../store/authStore'
-import axios from '../plugins/axios'
 
 const router = createRouter({
     history: createWebHistory(),
@@ -43,6 +42,55 @@ const router = createRouter({
                 requiresAuth: true,
             }
         },
+        // Admin routes
+        {
+            path: '/admin/dashboard',
+            name: 'AdminDashboard',
+            component: () => import('../views/admin/AdminDashboard.vue'),
+            meta: {
+                requiresAuth: true,
+                role: [1],
+                showSidebar: true,
+                showHeader: true
+            }
+        },
+        
+        {
+            path: '/admin/companies',
+            name: 'AdminCompanies',
+            component: () => import('../views/admin/CompaniesView.vue'),
+            meta: {
+                requiresAuth: true,
+                role: [1],
+                showSidebar: true,
+                showHeader: true
+            }
+        },
+       
+        {
+            path: '/admin/departments',
+            name: 'AdminDepartments',
+            component: () => import('../views/admin/DepartmentsView.vue'),
+            meta: {
+                requiresAuth: true,
+                role: [1],
+                showSidebar: true,
+                showHeader: true
+            }
+        },
+        {
+            path: '/admin/posts',
+            name: 'AdminPosts',
+            component: () => import('../views/admin/PostsView.vue'),
+            meta: {
+                requiresAuth: true,
+                role: [1],
+                showSidebar: true,
+                showHeader: true
+            }
+        },
+        
+        // Manager routes
         {
             path: '/manager/dashboard',
             name: 'ManagerDashboard',
@@ -50,17 +98,6 @@ const router = createRouter({
             meta: {
                 requiresAuth: true,
                 role: [3],
-                showSidebar: true,
-                showHeader: true
-            }
-        },
-        {
-            path: '/editor/users',
-            name: 'EditorUsers',
-            component: () => import('../views/manager/UsersView.vue'),
-            meta: {
-                requiresAuth: true,
-                role: [4],
                 showSidebar: true,
                 showHeader: true
             }
@@ -76,7 +113,19 @@ const router = createRouter({
                 showHeader: true
             }
         },
-         {
+        // Other routes
+        {
+            path: '/editor/users',
+            name: 'EditorUsers',
+            component: () => import('../views/manager/UsersView.vue'),
+            meta: {
+                requiresAuth: true,
+                role: [4],
+                showSidebar: true,
+                showHeader: true
+            }
+        },
+        {
             path: '/developer/variable',
             name: 'Variable',
             component: () => import('../views/developer/VariableView.vue'),
@@ -94,6 +143,9 @@ router.beforeEach(async (to, from, next) => {
     const authStore = useAuthStore()
     const token = authStore.token
 
+    console.log('Route guard - Going to:', to.path)
+    console.log('Route guard - User role:', authStore.userRole)
+
     if (to.meta.requiresAuth) {
         if (!token) {
             authStore.logout()
@@ -101,12 +153,11 @@ router.beforeEach(async (to, from, next) => {
         }
         
         try {
-
             const requiredRoles = to.meta.role as number[] | undefined
             if (requiredRoles && authStore.userRole !== null) {
                 // Check if user has required role
                 if (!requiredRoles.includes(authStore.userRole)) {
-                    
+                    console.log('Access denied - Required roles:', requiredRoles, 'User role:', authStore.userRole)
                     // Only redirect to Unauthorized if not already there
                     if (to.name !== 'Unauthorized') {
                         return next({ name: 'Unauthorized' })
@@ -116,6 +167,7 @@ router.beforeEach(async (to, from, next) => {
             // If no roles required or role check passed, allow access
             return next()
         } catch (error) {
+            console.error('Route guard error:', error)
             authStore.logout()
             return next({ name: 'Login' })
         }

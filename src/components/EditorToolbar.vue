@@ -1,4 +1,5 @@
 <template>
+    <!-- filepath: c:\Users\zougu\OneDrive\Desktop\Wise-Contract\src\components\EditorToolbar.vue -->
     <div class="bg-white border-b border-gray-200">
         <div class="relative">
             <div class="flex items-center space-x-1 p-2 overflow-x-auto whitespace-nowrap">
@@ -14,6 +15,24 @@
                         class="p-2 text-gray-500 rounded-md transition-colors flex items-center space-x-1 disabled:opacity-50 disabled:cursor-not-allowed">
                         <Redo2 :size="20" />
                     </button>
+                </div>
+
+                <div class="w-px h-6 bg-gray-200 mx-1"></div>
+
+                <!-- Page Size Selector -->
+                <div class="flex items-center space-x-2">
+                    <select 
+                        v-model="selectedSize" 
+                        @change="changePageSize"
+                        class="px-3 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    >
+                        <option value="a4">A4 (794×1123)</option>
+                        <option value="a5">A5 (559×794)</option>
+                        <option value="a3">A3 (1123×1587)</option>
+                        <option value="a2">A2 (1587×2244)</option>
+                        <option value="letter">Letter (816×1056)</option>
+                        <option value="legal">Legal (816×1344)</option>
+                    </select>
                 </div>
 
                 <div class="w-px h-6 bg-gray-200 mx-1"></div>
@@ -105,6 +124,7 @@
 </template>
 
 <script setup lang="ts">
+// filepath: c:\Users\zougu\OneDrive\Desktop\Wise-Contract\src\components\EditorToolbar.vue
 import { Editor } from "@tiptap/vue-3";
 import {
     Bold,
@@ -120,15 +140,103 @@ import {
     Redo2,
     Palette
 } from "lucide-vue-next";
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { useTypeStore } from '@/store/typeStore';
 
 const props = defineProps<{
     editor: Editor | undefined;
 }>();
 
 const emit = defineEmits<{
-    (e: 'navigate', direction: 'next' | 'previous'): void
+    (e: 'navigate', direction: 'next' | 'previous'): void;
+    (e: 'size-changed', size: string): void;
 }>();
+
+const route = useRoute();
+const router = useRouter();
+const typeStore = useTypeStore();
+
+// Page size state
+const selectedSize = ref('a4');
+
+// Page size dimensions
+const pageSizes = {
+    a4: { width: 794, height: 1123 },
+    a5: { width: 559, height: 794 },
+    a3: { width: 1123, height: 1587 },
+    a2: { width: 1587, height: 2244 },
+    letter: { width: 816, height: 1056 },
+    legal: { width: 816, height: 1344 }
+};
+
+// Get type dimensions with fallback
+const getTypeDimensions = (typeId: number) => {
+    const currentType = typeStore.types.find(type => type.id === typeId);
+    
+    if (currentType && currentType.width && currentType.height) {
+        return { width: currentType.width, height: currentType.height };
+    }
+    
+    // Fallback to hardcoded dimensions based on type_id
+    switch (typeId) {
+        case 1: // Contract A4
+        case 2: // CV A4
+            return { width: 794, height: 1123 };
+        case 3: // Contract A5
+        case 4: // CV A5
+            return { width: 559, height: 794 };
+        case 5: // Contract A2
+        case 6: // CV A2
+            return { width: 1587, height: 2244 };
+        default:
+            return { width: 794, height: 1123 }; // Default A4
+    }
+};
+
+// Set initial size based on current type
+const currentTypeSize = computed(() => {
+    const typeId = Number(route.params.type_id);
+    const dimensions = getTypeDimensions(typeId);
+    
+    // Find matching size
+    for (const [key, size] of Object.entries(pageSizes)) {
+        if (size.width === dimensions.width && size.height === dimensions.height) {
+            return key;
+        }
+    }
+    return 'a4';
+});
+
+// Update selected size when route changes
+const updateSelectedSize = () => {
+    selectedSize.value = currentTypeSize.value;
+};
+
+// Change page size
+const changePageSize = () => {
+    const size = pageSizes[selectedSize.value as keyof typeof pageSizes];
+    if (size) {
+        emit('size-changed', selectedSize.value);
+        
+        // Find type with matching dimensions
+        const matchingType = typeStore.types.find(type => {
+            const typeDimensions = getTypeDimensions(type.id);
+            return typeDimensions.width === size.width && typeDimensions.height === size.height;
+        });
+        
+        if (matchingType && matchingType.id !== Number(route.params.type_id)) {
+            // Navigate to the matching type
+            router.push({
+                name: 'Editor',
+                params: { 
+                    type_id: matchingType.id, 
+                    template_id: route.params.template_id 
+                }
+            });
+        }
+    }
+};
 
 const goToPrevious = () => {
     emit('navigate', 'previous');
@@ -169,6 +277,7 @@ const handleClickOutside = (event: MouseEvent) => {
 
 onMounted(() => {
     document.addEventListener('click', handleClickOutside);
+    updateSelectedSize();
 });
 
 onUnmounted(() => {
