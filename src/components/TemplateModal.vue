@@ -92,7 +92,7 @@ import { Color } from '@tiptap/extension-color';
 import { TextStyle } from '@tiptap/extension-text-style';
 import Highlight from '@tiptap/extension-highlight';
 import TextAlign from '@tiptap/extension-text-align';
-import { Variable } from '@/extensions/VariableNode';
+import { Variable } from '@/extensions/variable';
 
 interface User {
   id: number;

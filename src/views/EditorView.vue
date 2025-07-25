@@ -2,8 +2,8 @@
   <div class="">
     <HeaderEditor :editorPageRefs="editorPageRefs" />
     <!-- Toolbar -->
-    <EditorToolbar :editor="editors[activePageIndex]" />
-    <div class="h-[calc(100vh-6.8rem)]">
+    <MenuControll :editor="editors[activePageIndex]"/>
+    <div class="h-[calc(100vh-11.8rem)]">
       <div class="flex h-full">
         <div class="flex">
           <!-- Floating Control Sidebar -->
@@ -31,11 +31,11 @@
               width: `${pageSizeStore.pageWidth * zoomLevel}px`,
               height: `${pageSizeStore.pageHeight * zoomLevel}px`
             }">
-              <div v-for="(editor, index) in editors" :ref="el => editorPageRefs[index] = el as HTMLElement | null"
+              <div v-for="(editor, index) in editors" :ref="el => setEditorRef(el, index)"
                 :key="index"
                 :class="['transition-transform duration-200 ease-in-out', index === activePageIndex ? 'z-10 opacity-100' : 'pointer-events-none absolute -z-10']">
                 <div class="w-full h-full relative">
-                  <EditorPage :editor="editor" :style="{
+                  <EditorPage :editor="editor" :class="`bullet-style-${index}`" :style="{
                     transform: `scale(${zoomLevel})`,
                     transformOrigin: 'top left',
                     width: `${pageSizeStore.pageWidth}px`,
@@ -62,14 +62,13 @@
 
 <script setup lang="ts">
 import HeaderEditor from '@/components/HeaderEditor.vue';
-import EditorToolbar from '@/components/EditorToolbar.vue';
+import MenuControll from '@/components/toolbar/MenuControll.vue';
 import TemplatesList from '@/components/TemplatesList.vue';
 import EditorControlSidebar from '@/components/EditorControlSidebar.vue';
 import VariablesList from '@/components/VariablesList.vue';
 import EditorPageControls from '@/components/EditorPageControls.vue';
 import EditorPage from '@/components/EditorPage.vue';
 import { Editor } from '@tiptap/vue-3';
-import { GripVertical } from 'lucide-vue-next';
 import { ref, onMounted, onUnmounted, computed, watch, nextTick, defineComponent, h } from 'vue';
 import type { Ref } from 'vue';
 import { storeToRefs } from 'pinia';
@@ -81,17 +80,22 @@ import { useTypeStore } from '@/store/typeStore';
 import { usePageSizeStore } from '@/store/pageSizeStore';
 
 import StarterKit from '@tiptap/starter-kit';
-import { TextStyle } from '@tiptap/extension-text-style';
+import { TextStyle, FontSize, FontFamily  } from '@tiptap/extension-text-style';
 import Color from '@tiptap/extension-color';
 import TextAlign from '@tiptap/extension-text-align';
+import Subscript from '@tiptap/extension-subscript';
+import Superscript from '@tiptap/extension-superscript';
+import Highlight from '@tiptap/extension-highlight';
 import Image from '@tiptap/extension-image';
 import Focus from '@tiptap/extension-focus';
-import { Variable } from "@/extensions/VariableNode";
-import ResizableImage from '@/extensions/image/resizableImage';
+import { Variable } from "@/extensions/variable";
+import { OrderedList } from '@/extensions/list/order-list';
+import { BulletedList } from '@/extensions/list/bullet-list';
+import ResizableImage from '@/extensions/image/resizable-image';
 import { Columns, Column } from '@/extensions/columns/columns';
 import { removeContent } from "@/plugins/indexedDb";
 import { useRouter, useRoute } from 'vue-router'
-import { ElDialog, ElButton } from 'element-plus'
+import { TabHandler } from '@/extensions/tab-handler';
 
 const router = useRouter();
 const route = useRoute();
@@ -100,7 +104,6 @@ const editors: Ref<Editor[]> = ref([]);
 const activePageIndex: Ref<number> = ref(0);
 const zoomLevel: Ref<number> = ref(1);
 const isFullscreen: Ref<boolean> = ref(false);
-const pages: Ref<any[]> = ref([]);
 
 const editorStore = useEditorStore();
 const templateStore = useTemplateStore();
@@ -118,6 +121,10 @@ const pageHeight: Ref<number> = ref(0);
 
 const zoomMode = ref<'fit-width' | 'fit-height' | 'custom'>('fit-width');
 
+function setEditorRef(el: Element | null, index: number) {
+  editorPageRefs.value[index] = el as HTMLElement | null;
+}
+
 function handleZoomIn() {
   zoomMode.value = 'custom';
   zoomLevel.value = Math.min(zoomLevel.value + 0.1, 2);
@@ -127,14 +134,24 @@ function handleZoomOut() {
   zoomLevel.value = Math.max(zoomLevel.value - 0.1, 0.5);
 }
 
-function createEditor(content = '') {
+function createEditor(content = '', index = 0) {
   return new Editor({
     content,
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        orderedList: false,
+        bulletList: false,
+      }),
       TextStyle,
+      FontSize,
+      FontFamily,
+      Superscript,
+      Subscript,
+      OrderedList,
+      BulletedList,
       Image,
       Color,
+      Highlight.configure({ multicolor: true }),
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       Variable.configure({
         HTMLAttributes: { class: "variable-node" },
@@ -146,7 +163,8 @@ function createEditor(content = '') {
         className: 'selected-node',
         mode: 'all',
       }),
-      ResizableImage, // <-- Add this line
+      ResizableImage,
+      TabHandler
     ],
     onUpdate: () => {
       // Save all editors' content to IndexedDB on any update
@@ -400,11 +418,6 @@ const ParagraphDeleteButton = defineComponent({
   margin: 0.83em 0;
 }
 
-.ProseMirror ul,
-.ProseMirror ol {
-  padding: 0 1em;
-}
-
 .ProseMirror code {
   background-color: #f1f1f1;
   padding: 0.2em 0.4em;
@@ -439,6 +452,47 @@ const ParagraphDeleteButton = defineComponent({
 .ProseMirror .variable-node.ProseMirror-selectednode {
   outline: 2px solid #22d3ee;
   background-color: #bbf7d0;
+}
+
+.ProseMirror ul,
+.ProseMirror ol {
+  list-style-position: outside;
+}
+
+.ProseMirror ol[type="decimal"] {
+  list-style-type: decimal;
+}
+
+.ProseMirror ol[type="decimal-leading-zero"] {
+  list-style-type: decimal-leading-zero;
+}
+
+.ProseMirror ol[type="lower-roman"] {
+  list-style-type: lower-roman;
+}
+
+.ProseMirror ol[type="upper-roman"] {
+  list-style-type: upper-roman;
+}
+
+.ProseMirror ol[type="lower-alpha"] {
+  list-style-type: lower-alpha;
+}
+
+.ProseMirror ol[type="upper-alpha"] {
+  list-style-type: upper-alpha;
+}
+
+.ProseMirror ul.bullet-list-disc {
+  list-style-type: disc;
+}
+
+.ProseMirror ul.bullet-list-circle {
+  list-style-type: circle;
+}
+
+.ProseMirror ul.bullet-list-square {
+  list-style-type: square;
 }
 
 .fade-enter-active,
@@ -479,7 +533,6 @@ const ParagraphDeleteButton = defineComponent({
 .selected-node {
   background: #f5faff;
   border-radius: 4px;
-  padding: 8px;
   transition: background 0.2s;
 }
 
