@@ -91,6 +91,7 @@ import Focus from '@tiptap/extension-focus';
 import { Variable } from "@/extensions/variable";
 import { OrderedList } from '@/extensions/list/order-list';
 import { BulletedList } from '@/extensions/list/bullet-list';
+import { LineHeight } from '@/extensions/line-height';
 import ResizableImage from '@/extensions/image/resizable-image';
 import { Columns, Column } from '@/extensions/columns/columns';
 import { removeContent } from "@/plugins/indexedDb";
@@ -149,6 +150,7 @@ function createEditor(content = '', index = 0) {
       Subscript,
       OrderedList,
       BulletedList,
+      LineHeight,
       Image,
       Color,
       Highlight.configure({ multicolor: true }),
@@ -408,13 +410,43 @@ const ParagraphDeleteButton = defineComponent({
   padding: 8px;
 }
 
+.ProseMirror 
+h1, 
+h2, 
+h3, 
+h4, 
+h5, 
+h6 {
+  padding: 8px;
+}
+
 .ProseMirror h1 {
-  font-size: 2em;
+  font-size: 2.5em;
   margin: 0.67em 0;
 }
 
 .ProseMirror h2 {
+  font-size: 2em;
+  margin: 0.83em 0;
+}
+
+.ProseMirror h3 {
   font-size: 1.5em;
+  margin: 0.83em 0;
+}
+
+.ProseMirror h4 {
+  font-size: 1.25em;
+  margin: 0.83em 0;
+}
+
+.ProseMirror h5 {
+  font-size: 1em;
+  margin: 0.83em 0;
+}
+
+.ProseMirror h6 {
+  font-size: 0.85em;
   margin: 0.83em 0;
 }
 
@@ -457,6 +489,11 @@ const ParagraphDeleteButton = defineComponent({
 .ProseMirror ul,
 .ProseMirror ol {
   list-style-position: outside;
+}
+
+.ProseMirror li {
+  display: list-item;
+  margin: 4px 0;
 }
 
 .ProseMirror ol[type="decimal"] {

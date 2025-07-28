@@ -1,6 +1,6 @@
 <template>
     <button :disabled="!editor?.can().unsetAllMarks()" @click="handleRedo"
-        class="hover:text-green-500 hover:bg-green-100 p-2 text-gray-500 rounded-md transition-colors flex items-center space-x-1 disabled:opacity-50 disabled:cursor-not-allowed">
+        class="hover:text-green-500 hover:bg-green-100 p-2 rounded-md transition-colors flex items-center space-x-1 disabled:opacity-50 disabled:cursor-not-allowed">
         <Eraser :size="18" />
     </button>
 </template>

@@ -3,7 +3,7 @@
     :disabled="!editor?.can().undo()"
     @click="handleUndo"
     :class="{ 'hover:text-green-500 hover:bg-green-100': editor?.can().undo() }"
-    class="p-2 text-gray-500 rounded-md transition-colors flex items-center space-x-1 disabled:opacity-50 disabled:cursor-not-allowed"
+    class="p-2 rounded-md transition-colors flex items-center space-x-1 disabled:opacity-50 disabled:cursor-not-allowed"
   >
     <Undo2 :size="18" />
   </button>

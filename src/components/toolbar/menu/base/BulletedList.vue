@@ -1,5 +1,5 @@
 <template>
-  <div class="relative">
+  <div class="relative inline-block">
     <!-- Main Button -->
     <button
       class="p-2 rounded hover:bg-green-100 hover:text-green-500 transition-colors"

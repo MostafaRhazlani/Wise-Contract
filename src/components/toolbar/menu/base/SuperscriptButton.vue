@@ -1,7 +1,7 @@
 <template>
     <button @click="handleSuperscript"
         :class="{ 'bg-green-100 text-green-500': editor?.isActive('superscript') }"
-        class="p-2 text-gray-500 hover:text-green-500 hover:bg-green-100 rounded-md transition-colors">
+        class="p-2 hover:text-green-500 hover:bg-green-100 rounded-md transition-colors">
         <Superscript :size="18" />
     </button>
 </template>

@@ -13,7 +13,7 @@
             </ul>
         </nav>
         <template v-if="activeItem === 'home'">
-            <div class="flex items-center">
+            <div class="flex items-center text-gray-600">
                 <div class="grid grid-cols-2 gap-1">
                     <UndoButton :editor="editor"/>
                     <RedoButton :editor="editor"/>
@@ -42,14 +42,26 @@
                 <!-- break -->
                 <div class="w-px h-16 bg-gray-200 mx-4"></div>
 
-                <div class="flex flex-col gap-1">
+                <div class="flex flex-col">
                     <div class="space-x-1 w-full">
                         <AlignLeftButton :editor="editor" />
                         <AlignCenterButton :editor="editor" />
                         <AlignRightButton :editor="editor" />
                         <AlignJustifyButton :editor="editor" />
+                    </div>
+                    <div class="space-x-1 w-full">
                         <NumberedListButton :editor="editor" />
                         <BulletedList :editor="editor" />
+                        <LineHeight :editor="editor" />
+                    </div>
+                </div>
+
+                <!-- break -->
+                <div class="w-px h-16 bg-gray-200 mx-4"></div>
+
+                <div class="flex flex-col">
+                    <div class="space-x-1 w-full">
+                        <HeadingSize :editor="editor" />
                     </div>
                 </div>
             </div>
@@ -87,6 +99,8 @@ import AlignRightButton from './menu/base/AlignRightButton.vue';
 import AlignJustifyButton from './menu/base/AlignJustifyButton.vue';
 import NumberedListButton from './menu/base/NumberedListButton.vue';
 import BulletedList from './menu/base/BulletedList.vue';
+import LineHeight from './menu/base/LineHeight.vue';
+import HeadingSize from './menu/base/HeadingSize.vue';
 
 const props = defineProps<{ editor: any }>();
 

@@ -77,5 +77,6 @@ onUnmounted(() => document.removeEventListener('click', handleClick))
 <style scoped>
 .num-bered-root {
   position: relative;
+  display: inline-block;
 }
 </style>
