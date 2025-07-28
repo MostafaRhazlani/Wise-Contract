@@ -196,7 +196,12 @@ const handleSelectTemplate = (templateId: number) => {
     });
 
     // Replace all editors with the template's pages
-    const pagesContent = template.pages.map(page => JSON.parse(page.content_json));
+    const content: any[] = [];
+    const pagesContent = template.pages.map(page => {
+      content.push(JSON.parse(page.content_json).content);
+      return JSON.parse(page.content_json).content;
+    });
+    pageSizeStore.setAllContent(content);
     editors.value = pagesContent.map((content: any) => createEditor(content));
     activePageIndex.value = 0;
   }
@@ -293,10 +298,18 @@ const handleDrop = (event: DragEvent) => {
 };
 
 onMounted(async () => {
+  const template_id: number = Number(route.params.template_id);
   await pageSizeStore.loadFromIndexedDB();
   if(!pageSizeStore.pageWidth && !pageSizeStore.pageHeight) {
     await typeStore.getType(Number(route.params.type_id));
     const type = typeStore.type;
+    if(template_id) {
+      const template = await templateStore.getTemplate(template_id);
+      const content: any[] = [];
+      template?.pages.map(page => content.push(JSON.parse(page.content_json).content));
+      pageSizeStore.setAllContent(content);
+      
+    }
     pageSizeStore.setPageSize(type?.width ?? 0, type?.height ?? 0);
   }
   
