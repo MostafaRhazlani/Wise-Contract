@@ -39,7 +39,7 @@
             <input type="number" v-model.number="selectedCols" min="1" :max="maxCols" class="ml-2 w-10 rounded p-1 focus:outline-none" />
           </div>
           <label class="inline-flex items-center text-sm">
-            <input type="checkbox" v-model="includeHeader" class="mr-2 accent-green-500" /> Include Header
+            <input type="checkbox" v-model="isHeaderInclude" class="mr-2 accent-green-500" /> Include Header
           </label>
           <button class="w-full bg-green-500 hover:bg-green-700 text-white rounded font-bold py-1 mt-2 transition-colors" @click="confirmSelection(selectedRows, selectedCols)">Create Table</button>
         </div>
@@ -50,25 +50,30 @@
 
 <script setup lang="ts">
 import { ref, defineEmits } from 'vue';
+import type { Ref } from 'vue';
 import { Sheet } from 'lucide-vue-next';
+import { Editor } from '@tiptap/core';
 
-const maxRows = 8;
-const maxCols = 10;
-const selectedRows = ref(0);
-const selectedCols = ref(0);
-const includeHeader = ref(true);
-const showPopup = ref(false);
+const maxRows: number = 8;
+const maxCols: number = 10;
+const selectedRows: Ref<number> = ref(0);
+const selectedCols: Ref<number> = ref(0);
+const isHeaderInclude: Ref<boolean> = ref(true);
+const showPopup: Ref<boolean> = ref(false);
+const props = defineProps<{ editor: Editor }>();
 
 const emit = defineEmits(['insert-table']);
 
 function setSelection(row: number, col: number) {
   selectedRows.value = row;
   selectedCols.value = col;
+  
 }
 
 function confirmSelection(row: number, col: number) {
   if (row > 0 && col > 0) {
-    emit('insert-table', { rows: row, cols: col, includeHeader: includeHeader.value });
+    props.editor?.chain().focus().insertTable({ rows: row, cols: col, withHeaderRow: isHeaderInclude.value }).run();
+    console.log("confirm", row, col);
     showPopup.value = false;
   }
 }

@@ -88,6 +88,7 @@ import Superscript from '@tiptap/extension-superscript';
 import Highlight from '@tiptap/extension-highlight';
 import Image from '@tiptap/extension-image';
 import Focus from '@tiptap/extension-focus';
+import { TableKit } from '@tiptap/extension-table'
 import { Variable } from "@/extensions/variable";
 import { OrderedList } from '@/extensions/list/order-list';
 import { BulletedList } from '@/extensions/list/bullet-list';
@@ -153,6 +154,9 @@ function createEditor(content = '', index = 0) {
       LineHeight,
       Image,
       Color,
+      TableKit.configure({
+        table: { resizable: true },
+      }),
       Highlight.configure({ multicolor: true }),
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       Variable.configure({

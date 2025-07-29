@@ -68,7 +68,7 @@
 
         </template>
         <template v-else-if="activeItem === 'table'">
-            <InsertTable />
+            <InsertTable :editor="editor"/>
         </template>
         <template v-else-if="activeItem === 'page'">
             <div class="p-4 text-gray-400">Page components go here</div>
