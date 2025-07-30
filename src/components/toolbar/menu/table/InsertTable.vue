@@ -4,12 +4,12 @@
       class="flex flex-col items-center text-sm p-2 text-gray-500 hover:text-green-500 hover:bg-green-100 rounded-md transition-colors"
       @click="showPopup = !showPopup"
     >
-      <Sheet :size="36"/>
+      <Sheet :size="36" :stroke-width="1.5"/>
       <span>Insert Table</span>
     </button>
     <div
       v-if="showPopup"
-      class="absolute top-18 z-50"
+      class="absolute top-20 z-50"
       @click.self="showPopup = false"
     >
       <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-md">
@@ -72,8 +72,8 @@ function setSelection(row: number, col: number) {
 
 function confirmSelection(row: number, col: number) {
   if (row > 0 && col > 0) {
-    props.editor?.chain().focus().insertTable({ rows: row, cols: col, withHeaderRow: isHeaderInclude.value }).run();
-    console.log("confirm", row, col);
+    // Emit event to check if page is full before inserting
+    emit('insert-table', { rows: row, cols: col, withHeaderRow: isHeaderInclude.value });
     showPopup.value = false;
   }
 }

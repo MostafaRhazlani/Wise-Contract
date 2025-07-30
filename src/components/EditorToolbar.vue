@@ -112,8 +112,7 @@
 
                 <div class="w-px h-6 bg-gray-200 mx-1"></div>
 
-                <!-- Size selector -->
-                <SizeSelector/>
+                
             </div>
             <!-- Color Dropdown -->
             <div v-if="showColorPicker"
@@ -202,14 +201,4 @@ onMounted(() => {
 onUnmounted(() => {
     document.removeEventListener('click', handleClickOutside);
 });
-
-const showColumnDialog = ref(false)
-const columnCount = ref(2)
-
-function addColumns() {
-    if (props.editor) {
-        props.editor.commands.insertColumns(columnCount.value)
-    }
-    showColumnDialog.value = false
-}
 </script>
