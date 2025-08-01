@@ -339,7 +339,10 @@ const handleSelectTemplate = (templateId: number) => {
       content.push(JSON.parse(page.content_json).content);
       return JSON.parse(page.content_json).content;
     });
+    console.log(JSON.parse(template?.pages[0].content_json));
+    pageSizeStore.setPageSize(JSON.parse(template?.pages[0].content_json).width, JSON.parse(template?.pages[0].content_json).height);
     pageSizeStore.setAllContent(content);
+    pageSizeStore.setBackgroundColor(JSON.parse(template?.pages[0].content_json).backgroundColor ?? '#ffffff');
     editors.value = pagesContent.map((content: any) => createEditor(content));
     activePageIndex.value = 0;
   }
@@ -450,7 +453,7 @@ onMounted(async () => {
       const content: any[] = [];
       template?.pages.map(page => content.push(JSON.parse(page.content_json).content));
       pageSizeStore.setAllContent(content);
-
+      pageSizeStore.setBackgroundColor(JSON.parse(template?.pages[0].content_json).backgroundColor ?? '#ffffff');
     }
     pageSizeStore.setPageSize(type?.width ?? 0, type?.height ?? 0);
   }
