@@ -1,5 +1,5 @@
 <template>
-  <div class="left-0 border-r border-gray-200 top-24 pt-2 bottom-0 flex z-20">
+  <div class="left-0 border-r border-gray-200 top-24 pt-2 bottom-0 flex z-10">
     <div class="flex flex-col items-center p-2 space-y-4">
       <!-- Variables Button -->
       <button @click="$emit('toggle-panel', 'variables')" title="Variables" :class="['group flex flex-col items-center justify-center space-y-1', props.activePanel === 'variables' ? 'text-green-600' : '']">
