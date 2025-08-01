@@ -1,5 +1,5 @@
 <template>
-    <div class="bg-white border-b border-gray-200 p-2">
+    <div class="bg-white border-b border-gray-200 p-2 relative z-20">
         <nav class="mb-2">
             <ul class="flex gap-6 list-none m-0 p-0">
                 <li v-for="item in menuItems" :key="item.key" @click="setActive(item.key)" :class="[
@@ -12,69 +12,114 @@
                 </li>
             </ul>
         </nav>
-        <template v-if="activeItem === 'home'">
-            <div class="flex items-center text-gray-600">
-                <div class="grid grid-cols-2 gap-1">
-                    <UndoButton :editor="editor"/>
-                    <RedoButton :editor="editor"/>
-                    <ClearMarks :editor="editor"/>
-                </div>
-
-                <!-- break -->
-                <div class="w-px h-16 bg-gray-200 mx-4"></div>
-
-                <div class="flex flex-col gap-1">
-                    <div class="space-x-1 flex">
-                        <FontSize class="w-full" :editor="editor"/>
-                        <FontFamily class="w-full" :editor="editor"/>
+        <div class="max-w-full overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+            <div class="min-w-max flex">
+                <template v-if="activeItem === 'home'">
+                    <div class="flex items-center text-gray-600">
+                        <div class="grid grid-cols-2 gap-1">
+                            <UndoButton :editor="editor" />
+                            <RedoButton :editor="editor" />
+                            <ClearMarks :editor="editor" />
+                        </div>
+        
+                        <!-- break -->
+                        <div class="w-px h-16 bg-gray-200 mx-4"></div>
+        
+                        <div class="flex flex-col gap-1">
+                            <div class="space-x-1 flex">
+                                <FontSize class="w-full" :editor="editor" />
+                                <FontFamily class="w-full" :editor="editor" />
+                            </div>
+                            <div class="space-x-1 w-full">
+                                <BoldButton :editor="editor" />
+                                <ItalicButton :editor="editor" />
+                                <UnderlineButton :editor="editor" />
+                                <StrikeButton :editor="editor" />
+                                <SuperscriptButton :editor="editor" />
+                                <SubscriptButton :editor="editor" />
+                                <TextColorButton :editor="editor" />
+                                <HighlightButton :editor="editor" />
+                            </div>
+                        </div>
+        
+                        <!-- break -->
+                        <div class="w-px h-16 bg-gray-200 mx-4"></div>
+        
+                        <div class="flex flex-col">
+                            <div class="space-x-1 w-full">
+                                <AlignLeftButton :editor="editor" />
+                                <AlignCenterButton :editor="editor" />
+                                <AlignRightButton :editor="editor" />
+                                <AlignJustifyButton :editor="editor" />
+                            </div>
+                            <div class="space-x-1 w-full">
+                                <NumberedListButton :editor="editor" />
+                                <BulletedList :editor="editor" />
+                                <LineHeight :editor="editor" />
+                            </div>
+                        </div>
+        
+                        <!-- break -->
+                        <div class="w-px h-16 bg-gray-200 mx-4"></div>
+        
+                        <div class="flex flex-col">
+                            <div class="space-x-1 w-full">
+                                <HeadingSize :editor="editor" />
+                            </div>
+                        </div>
                     </div>
-                    <div class="space-x-1 w-full">
-                        <BoldButton :editor="editor"/>
-                        <ItalicButton :editor="editor"/>
-                        <UnderlineButton :editor="editor"/>
-                        <StrikeButton :editor="editor"/>
-                        <SuperscriptButton :editor="editor"/>
-                        <SubscriptButton :editor="editor"/>
-                        <ColorPicker :editor="editor"/>
+                </template>
+                <template v-else-if="activeItem === 'table'">
+                    <div class="flex items-center">
+                        <InsertTable :editor="editor" />
+        
+                        <!-- break -->
+                        <div class="w-px h-16 bg-gray-200 mx-4"></div>
+        
+                        <div class="flex">
+                            <div>
+                                <InsertRowAbove :editor="editor" />
+                                <InsertRowBelow :editor="editor" />
+                            </div>
+                            <div>
+                                <InsertColumnBefore :editor="editor" />
+                                <InsertColumnAfter :editor="editor" />
+                            </div>
+                            <div>
+                                <DeleteRow :editor="editor" />
+                                <DeleteColumn :editor="editor" />
+                            </div>
+                        </div>
+        
+                        <!-- break -->
+                        <div class="w-px h-16 bg-gray-200 mx-4"></div>
+        
+                        <div class="flex flex-col">
+                            <MergeCells :editor="editor" />
+                            <SplitCell :editor="editor" />
+                        </div>
+        
+                        <!-- break -->
+                        <div class="w-px h-16 bg-gray-200 mx-4"></div>
+                        
+                        <div class="flex items-start">
+                            <div>
+                                <HeaderRow :editor="editor" />
+                                <HeaderColumn :editor="editor" />
+                            </div>
+                            <HeaderCell :editor="editor" />
+                        </div>
                     </div>
-                </div>
-
-                <!-- break -->
-                <div class="w-px h-16 bg-gray-200 mx-4"></div>
-
-                <div class="flex flex-col">
-                    <div class="space-x-1 w-full">
-                        <AlignLeftButton :editor="editor" />
-                        <AlignCenterButton :editor="editor" />
-                        <AlignRightButton :editor="editor" />
-                        <AlignJustifyButton :editor="editor" />
-                    </div>
-                    <div class="space-x-1 w-full">
-                        <NumberedListButton :editor="editor" />
-                        <BulletedList :editor="editor" />
-                        <LineHeight :editor="editor" />
-                    </div>
-                </div>
-
-                <!-- break -->
-                <div class="w-px h-16 bg-gray-200 mx-4"></div>
-
-                <div class="flex flex-col">
-                    <div class="space-x-1 w-full">
-                        <HeadingSize :editor="editor" />
-                    </div>
-                </div>
+        
+                </template>
+                <template v-else-if="activeItem === 'page'">
+                    <SizeSelector />
+                </template>
+                <template v-else-if="activeItem === 'insert'">
+                    <InsertColumns :editor="editor" @insert-columns="handleInsertColumns" />
+                </template>
             </div>
-        </template>
-        <template v-else-if="activeItem === 'table'">
-            <InsertTable :editor="editor" @insert-table="handleInsertTable"/>
-        </template>
-        <template v-else-if="activeItem === 'page'">
-            <SizeSelector />
-        </template>
-        <template v-else-if="activeItem === 'insert'">
-           <InsertColumns :editor="editor" @insert-columns="handleInsertColumns"/>
-        </template>
+        </div>
     </div>
 </template>
 
@@ -104,6 +149,21 @@ import LineHeight from './menu/base/LineHeight.vue';
 import HeadingSize from './menu/base/HeadingSize.vue';
 import InsertColumns from './menu/insert/InsertColumns.vue';
 import SizeSelector from './menu/page/SizeSelector.vue';
+import InsertRowAbove from './menu/table/InsertRowAbove.vue';
+import InsertRowBelow from './menu/table/InsertRowBelow.vue';
+import InsertColumnBefore from './menu/table/InsertColumnBefore.vue';
+import InsertColumnAfter from './menu/table/InsertColumnAfter.vue';
+import DeleteRow from './menu/table/DeleteRow.vue';
+import DeleteColumn from './menu/table/DeleteColumn.vue';
+import MergeCells from './menu/table/MergeCells.vue';
+import SplitCell from './menu/table/SplitCell.vue';
+import HeaderRow from './menu/table/HeaderRow.vue';
+import HeaderColumn from './menu/table/HeaderColumn.vue';
+import HeaderCell from './menu/table/HeaderCell.vue';
+import CellAlignment from './menu/table/CellAlignment.vue';
+import CellBackground from './menu/table/CellBackground.vue';
+import TextColorButton from './menu/base/TextColorButton.vue';
+import HighlightButton from './menu/base/HighlightButton.vue';
 
 const props = defineProps<{ editor: any }>();
 
@@ -114,6 +174,7 @@ const menuItems = [
     { key: 'insert', label: 'Insert' },
 ];
 
+
 const activeItem = ref('home');
 
 function setActive(key: string) {
@@ -122,10 +183,6 @@ function setActive(key: string) {
 
 // Define the emits so child components can trigger these functions
 const emit = defineEmits(['insert-table', 'insert-columns']);
-
-function handleInsertTable(tableData: any) {
-    emit('insert-table', tableData);
-}
 
 function handleInsertColumns(columnData: any) {
     emit('insert-columns', columnData);

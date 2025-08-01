@@ -3,6 +3,7 @@ import { Extension } from '@tiptap/core'
 export interface LineHeightOptions {
   types: string[],
   heights: string[],
+  defaultHeight: string,
 }
 
 declare module '@tiptap/core' {
@@ -20,7 +21,8 @@ export const LineHeight = Extension.create<LineHeightOptions>({
   addOptions() {
     return {
       types: ['heading', 'paragraph'],
-      heights: ['1.5', '2.0', '4.0'],
+      heights: ['1', '1.5', '2', '2.5', '3'],
+      defaultHeight: '1.5',
     }
   },
 
@@ -31,32 +33,47 @@ export const LineHeight = Extension.create<LineHeightOptions>({
         attributes: {
           lineHeight: {
             default: null,
-            parseHTML: element => element.style.lineHeight || null,
+            parseHTML: element => {
+              const height = element.style.lineHeight;
+              return height ? height.replace(';', '') : null;
+            },
             renderHTML: attributes => {
               if (!attributes.lineHeight) {
-                return {}
+                return {};
               }
 
               return {
                 style: `line-height: ${attributes.lineHeight}`,
-              }
+              };
             },
           },
         },
       },
-    ]
+    ];
   },
 
   addCommands() {
     return {
-      setLineHeight: (height: string) => ({ commands }) => {
-        if (!this.options.heights.includes(height) && height !== 'unset') {
-          return false
+      setLineHeight: (height: string | number) => ({ commands }) => {
+        // Convert to string and normalize the value
+        const heightStr = height.toString();
+
+        // If unset, use default height
+        if (height === 'unset') {
+          return this.options.types.every(type =>
+            commands.updateAttributes(type, { lineHeight: null })
+          );
+        }
+
+        // Only validate against allowed heights if we have specific heights defined
+        let validHeight = heightStr;
+        if (!this.options.heights.includes(heightStr)) {
+          validHeight = this.options.defaultHeight;
         }
 
         return this.options.types.every(type =>
-          commands.updateAttributes(type, { lineHeight: height }),
-        )
+          commands.updateAttributes(type, { lineHeight: validHeight })
+        );
       },
 
       unsetLineHeight: () => ({ commands }) => {
