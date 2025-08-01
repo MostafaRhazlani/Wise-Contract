@@ -76,7 +76,7 @@ const saveEditorContent = async () => {
       const jsonContentWithSize = {
         width: jsonContent.width,
         height: jsonContent.height,
-        content: jsonContent.allContent
+        content: jsonContent.allContent[i]
       }
       const el = props.editorPageRefs[i];
       

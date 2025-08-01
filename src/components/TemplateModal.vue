@@ -92,7 +92,7 @@ import { Color } from '@tiptap/extension-color';
 import { TextStyle } from '@tiptap/extension-text-style';
 import Highlight from '@tiptap/extension-highlight';
 import TextAlign from '@tiptap/extension-text-align';
-import { Variable } from '@/extensions/VariableNode';
+import { Variable } from '@/extensions/variable';
 
 interface User {
   id: number;
@@ -269,8 +269,8 @@ function replaceVariablesInJson(json: any, user: any): any {
       const value = getValueByPath(user, json.attrs.key);
       return {
         type: 'text',
-        text: value ?? `[${json.attrs.key}]`,
-        marks: json.marks
+        text: String(value) ?? `[${json.attrs.key}]`,
+        marks: json.marks ?? []
       };
     }
     // Recursively process children
@@ -287,7 +287,9 @@ function replaceVariablesInJson(json: any, user: any): any {
 async function renderHtmlForUser(pageContentJson: string, user: User): Promise<string> {
   // Replace variables in the JSON
   const contentJson = JSON.parse(pageContentJson);
+  
   const replacedJson = replaceVariablesInJson(contentJson, user);
+  
   // Generate HTML from the replaced JSON
   const html = generateHTML(replacedJson, [
     StarterKit,
@@ -297,6 +299,7 @@ async function renderHtmlForUser(pageContentJson: string, user: User): Promise<s
     TextAlign.configure({ types: ['heading', 'paragraph'] }),
     Variable
   ]);
+  
   return html;
 }
 
@@ -309,9 +312,12 @@ async function generateSinglePDF(user: User, template: any): Promise<void> {
 
     for (let i = 0; i < pages.length; i++) {
       const parseContent = JSON.parse(pages[i].content_json);
-      const getContentJson = parseContent.content[i];
+      
+      const getContentJson = parseContent.content;
+      
       
       const html = await renderHtmlForUser(JSON.stringify(getContentJson), user);
+      
       if (i < pages.length - 1) {
         combinedHtml += `<div style='page-break-after: always;'>${html}</div>`;
       } else {
@@ -363,7 +369,7 @@ async function generateMultipleUsersPDF(users: User[], template: any): Promise<v
       for (let j = 0; j < pages.length; j++) {
         const page = pages[j];
         const parseContent = JSON.parse(page.content_json);
-        const getContentJson = parseContent.content[j];
+        const getContentJson = parseContent.content;
         const html = await renderHtmlForUser(JSON.stringify(getContentJson), user);
 
         if (i < users.length - 1 || j < pages.length - 1) {
@@ -463,8 +469,10 @@ async function generatePDF() {
     }
 
     try {
+      
       generating.value = true;
       await generateSinglePDF(props.user, currentTemplate);
+      
       ElMessage.success('PDF generated and downloaded!');
       handleClose();
     } catch (error) {
