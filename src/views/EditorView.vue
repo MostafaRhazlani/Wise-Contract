@@ -2,7 +2,7 @@
   <div class="">
     <HeaderEditor :editorPageRefs="editorPageRefs" />
     <!-- Toolbar -->
-    <MenuControll :editor="editors[activePageIndex]" @insert-table="handleInsertTable"
+    <MenuControll :editor="editors[activePageIndex]"
       @insert-columns="handleInsertColumns" />
     <div class="h-[calc(100vh-11.8rem)]">
       <div class="flex h-full">
@@ -138,62 +138,6 @@ function handleZoomIn() {
 function handleZoomOut() {
   zoomMode.value = 'custom';
   zoomLevel.value = Math.max(zoomLevel.value - 0.1, 0.5);
-}
-
-// Handle table insertion events from MenuControll
-function handleInsertTable(tableData: any) {
-  const currentPageIndex = activePageIndex.value;
-
-  if (editors.value[currentPageIndex]) {
-    // Calculate maximum rows that can fit in available space
-    const maxRows = calculateMaxTableRows(currentPageIndex, tableData.cols);
-    const requestedRows = tableData.rows;
-    
-    // Use the smaller of requested rows or maximum fitting rows
-    const actualRows = Math.min(requestedRows, maxRows);
-    
-    if (actualRows < 2) { // Need at least header + 1 data row
-      ElMessage({
-        message: 'Cannot insert table: Not enough space on current page',
-        type: 'warning',
-        duration: 3000
-      });
-      return;
-    }
-    
-    // Show message if we had to reduce the number of rows
-    if (actualRows < requestedRows) {
-      ElMessage({
-        message: `Table size adjusted: Inserting ${actualRows} rows (${actualRows - 1} data rows + header) to fit available space`,
-        type: 'info',
-        duration: 4000
-      });
-    }
-
-    const tableContent = {
-      type: 'table',
-      content: [
-        // Header row
-        {
-          type: 'tableRow',
-          content: Array(tableData.cols).fill(0).map(() => ({
-            type: 'tableHeader',
-            content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Header' }] }]
-          }))
-        },
-        // Data rows (actualRows - 1 because header is already counted)
-        ...Array(actualRows - 1).fill(0).map(() => ({
-          type: 'tableRow',
-          content: Array(tableData.cols).fill(0).map(() => ({
-            type: 'tableCell',
-            content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Cell' }] }]
-          }))
-        }))
-      ]
-    };
-
-    editors.value[currentPageIndex].commands.insertContent(tableContent);
-  }
 }
 
 // Handle columns insertion events from MenuControll
