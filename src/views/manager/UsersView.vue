@@ -2,10 +2,31 @@
   <div class="space-y-4 p-6 pt-20">
     <div class="flex items-center justify-between">
       <h2 class="text-2xl font-bold text-green-700">User Management</h2>
+      <div class="flex gap-2">
+        <el-button
+          v-if="selectedUsers.length > 0"
+          type="primary"
+          @click="uploadMultipleContracts"
+          plain
+        >
+          <FileUp :size="16" class="mr-2" />
+          Upload for Selected ({{ selectedUsers.length }})
+        </el-button>
+        <el-button
+          v-if="selectedUsers.length > 0"
+          type="danger"
+          @click="deleteMultipleUsers"
+          plain
+        >
+          <UserMinus :size="16" class="mr-2" />
+          Delete Selected ({{ selectedUsers.length }})
+        </el-button>
+      </div>
     </div>
 
     <!-- Element Plus table with green theme -->
     <el-table
+      ref="tableRef"
       :data="loading ? skeletonRows : users"
       style="width: 100%; margin: 1em auto;"
       header-cell-class-name="custom-header"
@@ -13,9 +34,10 @@
       class="rounded-lg bg-white"
       :row-style="{ height: '60px' }"
       stripe
+      @selection-change="handleSelectionChange"
     >
       <!-- Selection checkbox column -->
-      <el-table-column type="selection" align="start" />
+      <el-table-column type="selection" align="start" width="50" />
       
       <!-- User column with avatar -->
       <el-table-column label="User" align="left">
@@ -32,8 +54,13 @@
                 </div>
               </template>
               <template #default>
-                <img :src="scope.row.avatar" :alt="scope.row.name" class="h-10 w-10 rounded-full mr-3" />
-                <div>
+                <div class="min-w-10 max-w-10 min-h-10 max-h-10 rounded-full overflow-hidden mr-3">
+                  <div v-if="!scope.row.avatar" :style="{ backgroundColor: getColorFromName() }" class="h-10 w-10 flex items-center justify-center font-bold text-lg text-white">
+                    {{ getInitials(scope.row.name) }}
+                  </div>
+                  <img v-else :src="scope.row.avatar" :alt="scope.row.name" class="h-full w-full" />
+                </div>
+                <div class="min-w-96">
                   <div class="text-sm font-medium text-gray-900">{{ scope.row.name }}</div>
                   <div class="text-sm text-gray-500">{{ scope.row.email }}</div>
                 </div>
@@ -56,7 +83,7 @@
               <el-skeleton-item variant="text" style="width: 60%; margin: 0 auto" />
             </template>
             <template #default>
-              <span>{{ scope.row.department }}</span>
+              <span>{{ scope.row.department?.department_name || 'N/A' }}</span>
             </template>
           </el-skeleton>
         </template>
@@ -74,7 +101,7 @@
               <el-skeleton-item variant="text" style="width: 70%; margin: 0 auto" />
             </template>
             <template #default>
-              <span>{{ scope.row.post }}</span>
+              <span>{{ scope.row.post?.title || 'N/A' }}</span>
             </template>
           </el-skeleton>
         </template>
@@ -99,8 +126,6 @@
         </template>
       </el-table-column>
       
-
-      
       <!-- Actions column -->
       <el-table-column label="Actions" width="380" align="center">
         <template #default="scope">
@@ -117,7 +142,7 @@
                 <el-button
                   size="small"
                   type="primary"
-                  @click="uploadFile(scope.row)"
+                  @click="uploadSingleContract(scope.row)"
                   plain
                 >
                   <FileUp :size="15"/>&nbsp;Upload
@@ -133,7 +158,7 @@
                 <el-button
                   size="small"
                   type="danger"
-                  @click="deleteUser(scope.row)"
+                  @click="deleteSingleUser(scope.row)"
                   plain
                 >
                   <UserMinus :size="15"/>&nbsp;Delete
@@ -145,18 +170,20 @@
       </el-table-column>
     </el-table>
 
-    <!-- Template Modal Component -->
+    <!-- Template Modal - Used for both single and multiple uploads -->
     <TemplateModal 
       v-model="uploadModalVisible"
       :user="selectedUser"
-      @generate="handleGenerate"
+      :users="selectedUsers"
+      :is-multiple="isMultipleUpload"
+      @contracts-generated="handleContractsGenerated"
     />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { UserPen, UserMinus, FileUp } from 'lucide-vue-next'
 import axios from "axios";
 import TemplateModal from '@/components/TemplateModal.vue';
@@ -165,55 +192,177 @@ interface User {
   id: number;
   name: string;
   email: string;
-  department: string;
-  post: string;
+  department: any;
+  post: any;
   phone: string;
   avatar: string;
 }
 
 const users = ref<User[]>([]);
+const selectedUsers = ref<User[]>([]);
 const loading = ref(true);
 const uploadModalVisible = ref(false);
 const selectedUser = ref<User | null>(null);
+const isMultipleUpload = ref(false);
+const tableRef = ref();
 
 // Create skeleton placeholder rows
 const skeletonRows = ref(Array(5).fill({}));
 
 onMounted(async () => {
+  await loadUsers();
+});
+
+async function loadUsers() {
   loading.value = true;
   try {
     const response = await axios.get("/users");
-    // Map backend data to fit your table structure
-    users.value = response.data.users.map((user: any) => ({
-      ...user,
-      department: user.department ? user.department.department_name : "",
-      post: user.post ? user.post.title : "",
-      avatar: user.avatar || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23D1D5DB'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/%3E%3C/svg%3E",
-    }));
+    users.value = response.data.users;
   } catch (error) {
     console.error("Failed to fetch users", error);
     ElMessage.error("Failed to load users");
   } finally {
     loading.value = false;
   }
-});
+}
+
+// Handle table selection changes
+function handleSelectionChange(selection: User[]) {
+  selectedUsers.value = selection;
+}
 
 function editUser(user: User) {
   ElMessage.info(`Edit user: ${user.name}`)
 }
 
-function deleteUser(user: User) {
-  ElMessage.warning(`Delete user: ${user.name}`)
+// Single user delete
+async function deleteSingleUser(user: User) {
+  try {
+    await ElMessageBox.confirm(
+      `Are you sure you want to delete user "${user.name}"?`,
+      'Delete User',
+      {
+        confirmButtonText: 'Delete',
+        cancelButtonText: 'Cancel',
+        type: 'warning',
+        confirmButtonClass: 'el-button--danger'
+      }
+    );
+
+    await axios.delete(`/user/${user.id}`);
+    ElMessage.success('User deleted successfully');
+    await loadUsers();
+    
+    // Clear selection after successful delete
+    if (tableRef.value) {
+      tableRef.value.clearSelection();
+    }
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      console.error('Failed to delete user', error);
+      ElMessage.error('Failed to delete user');
+    }
+  }
 }
 
-function uploadFile(user: User) {
+// Multiple users delete
+async function deleteMultipleUsers() {
+  if (selectedUsers.value.length === 0) {
+    ElMessage.warning('Please select users to delete');
+    return;
+  }
+
+  try {
+    const userNames = selectedUsers.value.map(u => u.name).join(', ');
+    const confirmMessage = selectedUsers.value.length === 1 
+      ? `Are you sure you want to delete user "${userNames}"?`
+      : `Are you sure you want to delete ${selectedUsers.value.length} users?\n\nUsers: ${userNames}`;
+
+    await ElMessageBox.confirm(
+      confirmMessage,
+      `Delete ${selectedUsers.value.length} User${selectedUsers.value.length > 1 ? 's' : ''}`,
+      {
+        confirmButtonText: 'Delete All',
+        cancelButtonText: 'Cancel',
+        type: 'warning',
+        confirmButtonClass: 'el-button--danger'
+      }
+    );
+
+    // Delete all selected users
+    const deletePromises = selectedUsers.value.map(user => 
+      axios.delete(`/user/${user.id}`)
+    );
+
+    await Promise.all(deletePromises);
+    
+    ElMessage.success(`${selectedUsers.value.length} user${selectedUsers.value.length > 1 ? 's' : ''} deleted successfully`);
+    
+    // Clear selection and reload data
+    selectedUsers.value = [];
+    if (tableRef.value) {
+      tableRef.value.clearSelection();
+    }
+    await loadUsers();
+
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      console.error('Failed to delete users', error);
+      ElMessage.error('Failed to delete some users');
+      // Reload data even if some deletions failed
+      await loadUsers();
+      if (tableRef.value) {
+        tableRef.value.clearSelection();
+      }
+    }
+  }
+}
+
+// Single user contract upload
+function uploadSingleContract(user: User) {
   selectedUser.value = user;
+  isMultipleUpload.value = false;
   uploadModalVisible.value = true;
 }
 
-function handleGenerate(templateId: string, user: User) {
-  uploadModalVisible.value = false;
+// Multiple users contract upload
+function uploadMultipleContracts() {
+  if (selectedUsers.value.length === 0) {
+    ElMessage.warning('Please select users to generate contracts for');
+    return;
+  }
+  
   selectedUser.value = null;
+  isMultipleUpload.value = true;
+  uploadModalVisible.value = true;
+}
+
+// Handle successful contract generation
+function handleContractsGenerated(count: number) {
+  ElMessage.success(`${count} contract${count > 1 ? 's' : ''} generated successfully`);
+  
+  // Clear selection after successful generation
+  if (isMultipleUpload.value) {
+    selectedUsers.value = [];
+    if (tableRef.value) {
+      tableRef.value.clearSelection();
+    }
+  }
+}
+
+function getInitials(name: string): string {
+  if (!name) return '';
+  const words = name.trim().split(' ');
+  if (words.length === 1) return words[0][0].toUpperCase();
+  return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+}
+
+function getColorFromName(): string {
+  let r = Math.floor(Math.random() * 255);
+  let g = Math.floor(Math.random() * 255);
+  let b = Math.floor(Math.random() * 255);
+  
+  return `rgb(${r},${g},${b})`;
 }
 </script>
 
@@ -319,30 +468,5 @@ function handleGenerate(templateId: string, user: User) {
 .el-table .cell {
   word-break: break-word;
   line-height: 1.5;
-}
-
-/* Template card styling */
-.template-card {
-  border: 2px solid transparent;
-  transition: all 0.3s ease;
-  min-height: 180px;
-}
-
-.template-card:hover {
-  border-color: #e5e7eb;
-  transform: translateY(-2px);
-}
-
-.template-card.selected {
-  border-color: #3b82f6;
-  background-color: #f0f9ff;
-}
-
-.template-card.selected .el-card__body {
-  background-color: #e0f2fe;
-}
-
-.el-select {
-  margin-bottom: 16px;
 }
 </style>

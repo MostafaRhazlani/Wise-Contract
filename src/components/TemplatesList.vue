@@ -18,20 +18,20 @@
         @click="$emit('select-template', template.id)" 
         :class="[
           'cursor-pointer transition-transform duration-700',
-          selectedTemplate === String(template.id) 
+          selectedTemplate === String(template.id)
             ? 'border-2 border-green-500 bg-green-50 rounded-lg p-1' : ''
         ]"
       >
         <div class="w-full bg-gray-100 rounded border overflow-hidden">
           <img 
-            :src="storageBaseUrl + template.image" 
+            :src="storageBaseUrl + template.pages[0].image_path" 
             :alt="`${template.name || 'Template'} image`" 
             class="object-contain h-full w-full" 
           />
         </div>
         
         <!-- Show template info when in modal -->
-        <div class="mt-2 text-center">
+        <div v-if="route.name === 'EditorUsers'" class="mt-2 text-center">
           <h4 class="font-medium text-sm truncate">{{ template.template_name || 'Untitled' }}</h4>
           <p class="text-xs text-gray-500">{{ getTypeName(template.type_id) }}</p>
         </div>
@@ -84,8 +84,13 @@ onMounted(async () => {
 
   
   // Only load templates if not provided via props (not in modal)
-  if (!props.templates) {
+  if (templateStore.templates.length === 0) {
     await templateStore.getTemplatesCompanyWithType(Number(route.params.type_id));
+    console.log(templateStore.templates);
+    console.log(props.selectedTemplate);
+    
   }
+    
+  // }
 });
 </script>

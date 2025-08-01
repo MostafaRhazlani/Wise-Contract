@@ -21,6 +21,9 @@ export const Variable = Node.create({
   name: 'variable',
   inline: true,
   group: 'inline',
+  atom: false,
+  draggable: false,
+  selectable: true,
   marks: '_',
 
   addOptions() {
@@ -58,7 +61,7 @@ export const Variable = Node.create({
       mergeAttributes(HTMLAttributes, {
         class: 'variable-node',
       }),
-      `{{${node.attrs.key}}}`,
+      `{{${node.attrs.label}}}`,
     ]
   },
 
@@ -99,7 +102,7 @@ export const Variable = Node.create({
               const el = document.createElement('div')
               el.className = 'bg-white border border-gray-200 text-sm rounded shadow p-2 w-44'
               el.innerHTML = props.items
-                .map((item: any) => `<div class=\"p-1 hover:bg-gray-100 cursor-pointer font-semibold \">${item.key}</div>`)
+                .map((item: any) => `<div class=\"p-1 hover:bg-gray-100 cursor-pointer font-semibold \">${item.label}</div>`)
                 .join('')
               el.querySelectorAll('div').forEach((div: any, index: number) => {
                 div.onclick = () => props.command(props.items[index])

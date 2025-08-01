@@ -27,7 +27,7 @@ const router = createRouter({
             }
         },
         {
-            path: '/editor/:type_id/:templateId?',
+            path: '/editor/:type_id/:template_id?',
             name: 'Editor',
             component: () => import('../views/EditorView.vue'),
             meta: {
@@ -72,6 +72,17 @@ const router = createRouter({
             meta: {
                 requiresAuth: true,
                 role: [3],
+                showSidebar: true,
+                showHeader: true
+            }
+        },
+         {
+            path: '/developer/variable',
+            name: 'Variable',
+            component: () => import('../views/developer/VariableView.vue'),
+            meta: {
+                requiresAuth: true,
+                role: [5],
                 showSidebar: true,
                 showHeader: true
             }
