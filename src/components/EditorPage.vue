@@ -1,4 +1,5 @@
 <template>
+
     <div class="bg-white shadow-lg w-full h-full" ref="editorPageRef">
         <div v-if="isInvoiceType" class="invoice-template">
             <!-- Header -->
@@ -215,10 +216,12 @@
         <div v-else class="p-12">
             <EditorContent :editor="editor" />
         </div>
+
     </div>
 </template>
 
 <script setup lang="ts">
+
 import { Editor, EditorContent } from '@tiptap/vue-3';
 import { computed, ref, reactive } from 'vue';
 import { useRoute } from 'vue-router';
@@ -341,6 +344,7 @@ const formatCurrency = (amount: number) => {
         currency: 'USD'
     }).format(amount || 0);
 };
+
 </script>
 
 <style scoped>

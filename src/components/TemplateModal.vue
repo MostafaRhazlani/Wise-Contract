@@ -75,24 +75,35 @@
 
   <!-- Hidden div for PDF content rendering -->
   <div id="hide-content">
-    <div ref="pdfContentRef" id="pdf-content" class="p-6"></div>
+    <div ref="pdfContentRef"></div>
   </div>
+  
 </template>
 
 <script setup lang="ts">
 import TemplatesList from '@/components/TemplatesList.vue';
 import { ref, computed, watch, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
+
 import { useTemplateStore } from '@/store/templateStore';
 import { useTypeStore } from '@/store/typeStore';
+
 import html2pdf from 'html2pdf.js';
-import { generateHTML } from '@tiptap/html';
 import StarterKit from '@tiptap/starter-kit';
 import { Color } from '@tiptap/extension-color';
-import { TextStyle } from '@tiptap/extension-text-style';
+import { TextStyle, FontSize, FontFamily } from '@tiptap/extension-text-style';
 import Highlight from '@tiptap/extension-highlight';
 import TextAlign from '@tiptap/extension-text-align';
-import { Variable } from '@/extensions/VariableNode';
+import { Columns, Column } from '@/extensions/columns/columns';
+import { LineHeight } from '@/extensions/line-height';
+import { TableKit } from '@tiptap/extension-table';
+import Subscript from '@tiptap/extension-subscript';
+import Image from '@tiptap/extension-image';
+import Superscript from '@tiptap/extension-superscript';
+import { OrderedList } from '@/extensions/list/order-list';
+import { BulletedList } from '@/extensions/list/bullet-list';
+import { Editor } from '@tiptap/vue-3';
+import resizableImage from '@/extensions/image/resizable-image';
 
 interface User {
   id: number;
@@ -269,8 +280,8 @@ function replaceVariablesInJson(json: any, user: any): any {
       const value = getValueByPath(user, json.attrs.key);
       return {
         type: 'text',
-        text: value ?? `[${json.attrs.key}]`,
-        marks: json.marks
+        text: String(value) ?? `[${json.attrs.key}]`,
+        marks: json.marks ?? []
       };
     }
     // Recursively process children
@@ -284,20 +295,168 @@ function replaceVariablesInJson(json: any, user: any): any {
 }
 
 // Generate PDF for a single page and return the canvas
-async function renderHtmlForUser(pageContentJson: string, user: User): Promise<string> {
+async function renderHtmlForUser(contentJson: any, user: User): Promise<string> {
+  // Get the page background color from the store
+  const parsedJson = JSON.parse(contentJson);
+  // Inline styles for tables that need specific layout
+  const pageStyle = `
+    <style>
+      table {
+        table-layout: fixed;
+        border-collapse: collapse;
+      }
+      .columns {
+        display: flex !important;
+        width: 100% !important;
+        gap: 16px;
+        margin: 8px 0;
+      }
+      .column {
+        flex: 1 !important;
+        min-width: 0;
+        padding: 8px;
+        box-sizing: border-box;
+        background-color: transparent !important;
+      }
+      .column img {
+        max-width: 100% !important;
+        height: auto !important;
+        display: block;
+        margin: 0 auto;
+      }
+      .column p {
+        margin: 0 0 8px 0;
+      }
+    </style>
+  `;
+  
   // Replace variables in the JSON
-  const contentJson = JSON.parse(pageContentJson);
-  const replacedJson = replaceVariablesInJson(contentJson, user);
-  // Generate HTML from the replaced JSON
-  const html = generateHTML(replacedJson, [
-    StarterKit,
-    Color,
-    TextStyle,
-    Highlight,
-    TextAlign.configure({ types: ['heading', 'paragraph'] }),
-    Variable
-  ]);
-  return html;
+  const contentWithVariables = replaceVariablesInJson(parsedJson.content, user);
+  
+  // Convert the JSON to HTML using TipTap
+  const editor = new Editor({
+    editable: false,
+    content: contentWithVariables,
+    extensions: [
+    StarterKit.configure({
+        orderedList: false,
+        bulletList: false,
+      }),
+      TextStyle,
+      FontSize,
+      FontFamily,
+      Superscript,
+      Subscript,
+      OrderedList,
+      BulletedList,
+      LineHeight,
+      Image,
+      Color,
+      TableKit.configure({
+        table: { resizable: true },
+      }),
+      Highlight.configure({ multicolor: true }),
+      TextAlign.configure({ types: ["heading", "paragraph"] }),
+      Columns,
+      Column,
+      resizableImage
+    ],
+  });
+  
+  // Wrap the content in a div with Tailwind classes
+  const htmlContent = editor.getHTML();
+  // Process the HTML content to add Tailwind classes
+  const processHtmlWithTailwind = (html: string) => {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    
+    // Apply Tailwind classes to elements
+    doc.querySelectorAll('h1').forEach(el => {
+      el.className = 'text-4xl my-4';
+    });
+    doc.querySelectorAll('h2').forEach(el => {
+      el.className = 'text-3xl my-3';
+    });
+    doc.querySelectorAll('h3').forEach(el => {
+      el.className = 'text-2xl my-2';
+    });
+    doc.querySelectorAll('h4').forEach(el => {
+      el.className = 'text-xl my-2';
+    });
+    
+    // Apply list styles with proper type casting
+    const setListStyle = (selector: string, style: string) => {
+      doc.querySelectorAll(selector).forEach((el: Element) => {
+        if (el instanceof HTMLElement) {
+          el.style.listStyleType = style as any;
+        }
+      });
+    };
+
+    // Apply ordered list styles
+    setListStyle('ol[type="1"], ol[type="decimal"]', 'decimal');
+    setListStyle('ol[type="decimal-leading-zero"]', 'decimal-leading-zero');
+    setListStyle('ol[type="i"]', 'lower-roman');
+    setListStyle('ol[type="I"]', 'upper-roman');
+    setListStyle('ol[type="a"]', 'lower-alpha');
+    setListStyle('ol[type="A"], ol[type="upper-alpha"]', 'upper-alpha');
+    
+    // Apply unordered list styles
+    setListStyle('ul.bullet-list-disc', 'disc');
+    setListStyle('ul.bullet-list-circle', 'circle');
+    setListStyle('ul.bullet-list-square', 'square');
+    
+    // Ensure list items have proper display and margin
+    doc.querySelectorAll('li').forEach((el: Element) => {
+      if (el instanceof HTMLElement) {
+        el.style.display = 'list-item';
+        el.style.margin = '4px 0';
+      }
+    });
+    
+    doc.querySelectorAll('h5').forEach(el => {
+      el.className = 'text-lg my-2';
+    });
+    doc.querySelectorAll('h6').forEach(el => {
+      el.className = 'text-base my-2';
+    });
+    doc.querySelectorAll('p').forEach(el => {
+      el.className = 'mb-4 px-2';
+    });
+    doc.querySelectorAll('table').forEach(el => {
+      el.className = 'w-full mt-4';
+    });
+    doc.querySelectorAll('th').forEach(el => {
+      el.className = 'border border-gray-300 bg-gray-100 text-left font-bold overflow-hidden';
+    });
+    doc.querySelectorAll('td').forEach(el => {
+      el.className = 'border border-gray-300 overflow-hidden';
+    });
+    doc.querySelectorAll('ul').forEach(el => {
+      el.className = 'list-disc pl-5 my-2';
+    });
+    doc.querySelectorAll('ol').forEach(el => {
+      el.className = 'list-decimal pl-5 my-2';
+    });
+    doc.querySelectorAll('li').forEach(el => {
+      el.className = 'my-1';
+    });
+    // Don't override column images with inline-block
+    doc.querySelectorAll('img:not(.column img)').forEach(el => {
+      el.className = 'inline-block max-w-full h-auto';
+    });
+    
+    return doc.body.innerHTML;
+  };
+  
+  const processedHtml = processHtmlWithTailwind(htmlContent);
+  const wrappedHtml = `
+    <div class="w-full h-full font-sans">
+      ${processedHtml}
+    </div>
+  `;
+  
+  return `${pageStyle}${wrappedHtml}`;
 }
 
 // Generate PDF for single user (for single upload mode) using html2pdf
@@ -307,17 +466,32 @@ async function generateSinglePDF(user: User, template: any): Promise<void> {
     let combinedHtml = '';
     const pages = template.pages;
 
+    // Add a container div with proper dimensions
+    combinedHtml += `<div style="width: 100%;">`;
+
     for (let i = 0; i < pages.length; i++) {
       const parseContent = JSON.parse(pages[i].content_json);
-      const getContentJson = parseContent.content[i];
-      
-      const html = await renderHtmlForUser(JSON.stringify(getContentJson), user);
-      if (i < pages.length - 1) {
-        combinedHtml += `<div style='page-break-after: always;'>${html}</div>`;
-      } else {
-        combinedHtml += `<div>${html}</div>`;
-      }
+      const html = await renderHtmlForUser(JSON.stringify(parseContent), user);
+
+      combinedHtml += `
+        <div 
+          style="
+            background: ${parseContent.backgroundColor}; 
+            width: ${parseContent.width}px; 
+            height: ${parseContent.height}px;
+          "
+          class="p-5 mx-auto overflow-hidden box-border"
+        >
+          <div class="w-full h-full overflow-auto">${html}</div>
+        </div>
+      `;
     }
+    
+    // Close the container div
+    combinedHtml += `</div>`;
+
+    console.log(combinedHtml);
+    
     // Render the HTML into the hidden div
     if (pdfContentRef.value) {
       pdfContentRef.value.innerHTML = combinedHtml;
@@ -329,10 +503,25 @@ async function generateSinglePDF(user: User, template: any): Promise<void> {
     const heightCm = pxTomm(JSON.parse(pages[0].content_json).height);
     
     await html2pdf().set({
-      margin: 10,
+      margin: 0,
       filename: fileName,
-      html2canvas: { scale: 2, useCORS: true },
-      jsPDF: { orientation: widthCm > heightCm ? 'landscape' : 'portrait', unit: 'mm', format: [widthCm, heightCm] }
+      html2canvas: { 
+        scale: 2, 
+        useCORS: true,
+        backgroundColor: JSON.parse(pages[0].content_json).backgroundColor || '#ffffff',
+        logging: true,
+        allowTaint: true,
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: JSON.parse(pages[0].content_json).width,
+        windowHeight: JSON.parse(pages[0].content_json).height
+      },
+      jsPDF: { 
+        orientation: widthCm > heightCm ? 'landscape' : 'portrait', 
+        unit: 'mm', 
+        format: [widthCm, heightCm],
+        hotfixes: ['px_scaling']
+      }
     }).from(pdfContentRef.value).save();
   } catch (error) {
     throw error;
@@ -363,14 +552,29 @@ async function generateMultipleUsersPDF(users: User[], template: any): Promise<v
       for (let j = 0; j < pages.length; j++) {
         const page = pages[j];
         const parseContent = JSON.parse(page.content_json);
-        const getContentJson = parseContent.content[j];
-        const html = await renderHtmlForUser(JSON.stringify(getContentJson), user);
+        // Pass the full content_json to renderHtmlForUser, not just the content
+        const html = await renderHtmlForUser(page.content_json, user);
 
-        if (i < users.length - 1 || j < pages.length - 1) {
-          allPages.push(`<div style='page-break-after: always;'>${html}</div>`);
-        } else {
-          allPages.push(`<div>${html}</div>`);
-        }
+        // Wrap each page in a container with proper dimensions and styles
+        const pageHtml = `
+          <div 
+            style="
+              background: ${parseContent.backgroundColor || '#ffffff'}; 
+              width: ${parseContent.width}px; 
+              height: ${parseContent.height}px;
+              position: relative;
+              overflow: hidden;
+              box-sizing: border-box;
+              padding: 20px;
+              margin: 0 auto;
+            "
+            class="page-container"
+          >
+            <div class="w-full h-full overflow-auto">${html}</div>
+          </div>
+        `;
+
+        allPages.push(`<div>${pageHtml}</div>`);
       }
       completed++;
       progressPercentage.value = Math.round(((i + 1) / users.length) * 100);
@@ -389,17 +593,26 @@ async function generateMultipleUsersPDF(users: User[], template: any): Promise<v
     await new Promise(resolve => setTimeout(resolve, 200));
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
     const fileName = `${template.title || 'contract'}_${completed}users_${timestamp}.pdf`;
+    const firstPageJson = JSON.parse(template.pages[0].content_json);
     await html2pdf().set({
-      margin: 10,
+      margin: 0,
       filename: fileName,
       html2canvas: { 
         scale: 2, 
         useCORS: true,
+        backgroundColor: firstPageJson.backgroundColor || '#ffffff',
+        logging: true,
+        allowTaint: true,
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: firstPageJson.width,
+        windowHeight: firstPageJson.height
       },
       jsPDF: { 
         orientation: isLandscape ? 'landscape' : 'portrait', 
         unit: 'mm', 
-        format: [widthMm, heightMm]  
+        format: [widthMm, heightMm],
+        hotfixes: ['px_scaling']
       }
     }).from(pdfContentRef.value).save();
   } catch (error) {
@@ -463,8 +676,10 @@ async function generatePDF() {
     }
 
     try {
+      
       generating.value = true;
       await generateSinglePDF(props.user, currentTemplate);
+      
       ElMessage.success('PDF generated and downloaded!');
       handleClose();
     } catch (error) {
