@@ -273,6 +273,9 @@ const handleDrop = (event: DragEvent) => {
 };
 
 onMounted(async () => {
+  // Load types first to ensure we have type information available
+  await typeStore.getTypes();
+  
   await pageSizeStore.loadFromIndexedDB();
   if(!pageSizeStore.pageWidth && !pageSizeStore.pageHeight) {
     await typeStore.getType(Number(route.params.type_id));
@@ -316,10 +319,11 @@ function getVisibleBlocks(editor: Editor, pageIndex: number) {
   view.dom.querySelectorAll('p,div,li').forEach((el, idx) => {
     const pos = view.posAtDOM(el, 0);
     const rect = el.getBoundingClientRect();
-    const isActive = selectionPos >= pos && selectionPos <= pos + el.textContent.length + 1;
+    const textLength = el.textContent ? el.textContent.length : 0;
+    const isActive = selectionPos >= pos && selectionPos <= pos + textLength + 1;
     blocks.push({
       key: idx,
-      top: rect.top - containerRect.top + el.offsetHeight / 2 - 16,
+      top: rect.top - containerRect.top + ((el as HTMLElement).offsetHeight) / 2 - 16,
       left: -40,
       pageIndex,
       pos,
@@ -361,7 +365,7 @@ const ParagraphDeleteButton = defineComponent({
           {
             class:
               'absolute z-40 bg-white border rounded w-7 h-7 flex items-center justify-center shadow hover:bg-red-100 text-red-500 paragraph-delete-btn',
-            style: { top: `${props.top}px`, left: `${props.left - 32}px` },
+            style: { top: `${props.top}px`, left: `${(props.left ?? 0) - 32}px` },
             onClick: () => emit('delete', props.pageIndex, props.pos),
             title: 'Delete paragraph',
             type: 'button',
