@@ -99,7 +99,6 @@ import ResizableImage from '@/extensions/image/resizable-image';
 import { Columns, Column } from '@/extensions/columns/columns';
 import { removeContent } from "@/plugins/indexedDb";
 import { useRouter, useRoute } from 'vue-router'
-import { TabHandler } from '@/extensions/tab-handler';
 import NotionMenuButton from '@/components/notion-controls/NotionMenuButton.vue';
 import { ElMessage } from 'element-plus';
 
@@ -182,25 +181,6 @@ function getAvailableHeight(editorIndex: number): number {
   return Math.max(0, availableHeight);
 }
 
-// Helper function to calculate maximum rows that can fit in available space
-function calculateMaxTableRows(editorIndex: number, cols: number): number {
-  const availableHeight = getAvailableHeight(editorIndex);
-  const estimatedRowHeight = 40; // Approximate row height
-  const tablePadding = 20; // Table padding and borders
-  const headerHeight = 40; // Header row height
-  
-  // Calculate available height for data rows
-  const availableForRows = availableHeight - tablePadding - headerHeight;
-  
-  // Calculate maximum number of data rows that can fit
-  const maxDataRows = Math.floor(availableForRows / estimatedRowHeight);
-  
-  // Total rows = header row + data rows (minimum 1 data row)
-  const totalRows = Math.max(1, maxDataRows) + 1; // +1 for header
-  
-  return totalRows;
-}
-
 // Helper function to estimate content height before insertion
 function estimateContentHeight(contentType: string, data?: any): number {
   switch (contentType) {
@@ -270,7 +250,6 @@ function createEditor(content = '', index = 0) {
         mode: 'all',
       }),
       ResizableImage,
-      TabHandler
     ],
     onUpdate: () => {
       // Save all editors' content to IndexedDB on any update
@@ -339,7 +318,9 @@ const handleSelectTemplate = (templateId: number) => {
       content.push(JSON.parse(page.content_json).content);
       return JSON.parse(page.content_json).content;
     });
+    pageSizeStore.setPageSize(JSON.parse(template?.pages[0].content_json).width, JSON.parse(template?.pages[0].content_json).height);
     pageSizeStore.setAllContent(content);
+    pageSizeStore.setBackgroundColor(JSON.parse(template?.pages[0].content_json).backgroundColor ?? '#ffffff');
     editors.value = pagesContent.map((content: any) => createEditor(content));
     activePageIndex.value = 0;
   }
@@ -450,9 +431,11 @@ onMounted(async () => {
       const content: any[] = [];
       template?.pages.map(page => content.push(JSON.parse(page.content_json).content));
       pageSizeStore.setAllContent(content);
-
+      pageSizeStore.setBackgroundColor(JSON.parse(template?.pages[0].content_json).backgroundColor ?? '#ffffff');
+      pageSizeStore.setPageSize(JSON.parse(template?.pages[0].content_json).width ?? 0, JSON.parse(template?.pages[0].content_json).height ?? 0);
+    } else {
+      pageSizeStore.setPageSize(type?.width ?? 0, type?.height ?? 0);
     }
-    pageSizeStore.setPageSize(type?.width ?? 0, type?.height ?? 0);
   }
 
   if (pageSizeStore.allContent.length > 0) {

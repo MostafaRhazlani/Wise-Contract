@@ -186,12 +186,9 @@ const selectTemplate = (type_id: number, template_id: number) => {
   const template = templateStore.templates.find(el => el.id === template_id);
   // Use the first page's content_json if available
   if (template?.pages && template.pages.length > 0) {
-    const pagesContent = template.pages.map(page => JSON.parse(page.content_json));
-    setContent("editorContent", pagesContent).then(() => {
-      router.push({
-        name: 'Editor',
-        params: { type_id: type_id, template_id: template_id }
-      });
+    router.push({
+      name: 'Editor',
+      params: { type_id: type_id, template_id: template_id }
     });
   }
 }

@@ -113,7 +113,9 @@
         
                 </template>
                 <template v-else-if="activeItem === 'page'">
-                    <SizeSelector />
+                    <SizeSelector :editor="editor" />
+                    <PageOrientation />
+                    <PageBackground />
                 </template>
                 <template v-else-if="activeItem === 'insert'">
                     <InsertColumns :editor="editor" @insert-columns="handleInsertColumns" />
@@ -149,6 +151,8 @@ import LineHeight from './menu/base/LineHeight.vue';
 import HeadingSize from './menu/base/HeadingSize.vue';
 import InsertColumns from './menu/insert/InsertColumns.vue';
 import SizeSelector from './menu/page/SizeSelector.vue';
+import PageOrientation from './menu/page/PageOrientation.vue';
+import PageBackground from './menu/page/PageBackground.vue';
 import InsertRowAbove from './menu/table/InsertRowAbove.vue';
 import InsertRowBelow from './menu/table/InsertRowBelow.vue';
 import InsertColumnBefore from './menu/table/InsertColumnBefore.vue';
