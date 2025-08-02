@@ -421,7 +421,11 @@ const handleDrop = (event: DragEvent) => {
 };
 
 onMounted(async () => {
-  const template_id: number = Number(route.params.template_id);
+
+  // Load types first to ensure we have type information available
+  await typeStore.getTypes();
+  
+
   await pageSizeStore.loadFromIndexedDB();
   if (!pageSizeStore.pageWidth && !pageSizeStore.pageHeight) {
     await typeStore.getType(Number(route.params.type_id));
@@ -486,22 +490,13 @@ function getVisibleBlocks(editor: Editor, pageIndex: number) {
     if (pos === -1 || pos >= view.state.doc.content.size) return;
 
     const rect = el.getBoundingClientRect();
-    const textLength = el.textContent?.length || 0;
-    const node = view.state.doc.nodeAt(pos);
-    const nodeSize = node?.nodeSize || textLength + 2;
 
-    // Focus detection
-    const isActive = selectionPos >= pos && selectionPos <= pos + nodeSize;
-    const hasFocusClass = el.classList.contains('selected-node');
-    const isWithinElement = selectionPos >= pos && selectionPos <= pos + nodeSize;
-    const isFocused = isActive || hasFocusClass || isWithinElement;
-
-    // Show buttons for focused OR hovered blocks
-    const shouldShow = isFocused;
-
+    const textLength = el.textContent ? el.textContent.length : 0;
+    const isActive = selectionPos >= pos && selectionPos <= pos + textLength + 1;
     blocks.push({
       key: idx,
-      top: rect.top - containerRect.top + (el as HTMLElement).offsetHeight / 2 - 16,
+      top: rect.top - containerRect.top + ((el as HTMLElement).offsetHeight) / 2 - 16,
+
       left: -40,
       pageIndex,
       pos,
@@ -512,6 +507,50 @@ function getVisibleBlocks(editor: Editor, pageIndex: number) {
   });
   return blocks;
 }
+
+
+// Delete paragraph at position
+function deleteParagraph(pageIndex: number, pos: number) {
+  const editor = editors.value[pageIndex];
+  if (!editor) return;
+  editor.commands.command(({ tr, state }) => {
+    const $pos = state.doc.resolve(pos);
+    const node = $pos.nodeAfter;
+    if (!node || node.type.name !== 'paragraph') return false;
+    tr.delete(pos, pos + node.nodeSize);
+    return true;
+  });
+}
+
+// ParagraphDeleteButton component
+const ParagraphDeleteButton = defineComponent({
+  props: {
+    top: Number,
+    left: Number,
+    pageIndex: Number,
+    pos: Number,
+    show: Boolean,
+  },
+  emits: ['delete'],
+  setup(props, { emit }) {
+    return () =>
+      props.show
+        ? h(
+          'button',
+          {
+            class:
+              'absolute z-40 bg-white border rounded w-7 h-7 flex items-center justify-center shadow hover:bg-red-100 text-red-500 paragraph-delete-btn',
+            style: { top: `${props.top}px`, left: `${(props.left ?? 0) - 32}px` },
+            onClick: () => emit('delete', props.pageIndex, props.pos),
+            title: 'Delete paragraph',
+            type: 'button',
+          },
+          '🗑'
+        )
+        : null;
+  },
+});
+
 </script>
 
 <style>
