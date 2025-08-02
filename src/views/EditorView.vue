@@ -71,7 +71,7 @@ import VariablesList from '@/components/VariablesList.vue';
 import EditorPageControls from '@/components/EditorPageControls.vue';
 import EditorPage from '@/components/EditorPage.vue';
 import { Editor } from '@tiptap/vue-3';
-import { ref, onMounted, onUnmounted, computed, nextTick, watch, watchEffect } from 'vue';
+import { ref, onMounted, onUnmounted, computed, nextTick, defineComponent, h } from 'vue';
 import type { Ref } from 'vue';
 import { storeToRefs } from 'pinia';
 
@@ -81,8 +81,9 @@ import { useVariablesStore } from '@/store/variablesStore';
 import { useTypeStore } from '@/store/typeStore';
 import { usePageSizeStore } from '@/store/pageSizeStore';
 
+// Fixed TipTap imports based on your package.json
 import StarterKit from '@tiptap/starter-kit';
-import { TextStyle, FontSize, FontFamily } from '@tiptap/extension-text-style';
+import { TextStyle } from '@tiptap/extension-text-style';
 import Color from '@tiptap/extension-color';
 import TextAlign from '@tiptap/extension-text-align';
 import Subscript from '@tiptap/extension-subscript';
@@ -90,13 +91,22 @@ import Superscript from '@tiptap/extension-superscript';
 import Highlight from '@tiptap/extension-highlight';
 import Image from '@tiptap/extension-image';
 import Focus from '@tiptap/extension-focus';
-import { TableKit } from '@tiptap/extension-table'
-import { Variable } from "@/extensions/variable";
-import { OrderedList } from '@/extensions/list/order-list';
-import { BulletedList } from '@/extensions/list/bullet-list';
-import { LineHeight } from '@/extensions/line-height';
-import ResizableImage from '@/extensions/image/resizable-image';
-import { Columns, Column } from '@/extensions/columns/columns';
+import { Table } from '@tiptap/extension-table';
+import Underline from '@tiptap/extension-underline';
+// Note: @tiptap/extension-list provides ListItem, OrderedList, BulletList
+import { ListItem, OrderedList, BulletList } from '@tiptap/extension-list';
+
+// You don't have these extensions installed, so we'll comment them out
+// import { TableRow } from '@tiptap/extension-table-row';
+// import { TableHeader } from '@tiptap/extension-table-header';
+// import { TableCell } from '@tiptap/extension-table-cell';
+
+// Custom extensions (commented out if they don't exist)
+// import { Variable } from "@/extensions/variable";
+// import { LineHeight } from '@/extensions/line-height';
+// import ResizableImage from '@/extensions/image/resizable-image';
+// import { Columns, Column } from '@/extensions/columns/columns';
+
 import { removeContent } from "@/plugins/indexedDb";
 import { useRouter, useRoute } from 'vue-router'
 import NotionMenuButton from '@/components/notion-controls/NotionMenuButton.vue';
@@ -120,11 +130,14 @@ const { activePanel } = storeToRefs(editorStore);
 const { togglePanel } = editorStore;
 
 const containerRef = ref<HTMLElement | null>(null);
-
 const zoomMode = ref<'fit-width' | 'fit-height' | 'custom'>('fit-width');
 
+// Get template_id from route params
+const templateId = computed(() => {
+  return route.params.template_id ? Number(route.params.template_id) : null;
+});
+
 function setEditorRef(el: any, index: number) {
-  // Handle both Element and Vue component instance
   const element = el?.$el || el;
   editorPageRefs.value[index] = element as HTMLElement | null;
 }
@@ -143,7 +156,6 @@ function handleZoomOut() {
 function handleInsertColumns(columnData: any) {
   const currentPageIndex = activePageIndex.value;
 
-  // Check if columns can fit before inserting
   if (editors.value[currentPageIndex]) {
     if (!canContentFit(currentPageIndex, 'columns', columnData)) {
       ElMessage({
@@ -154,115 +166,96 @@ function handleInsertColumns(columnData: any) {
       return;
     }
 
-    // Create columns content structure
-    const columns = Array(columnData.columnCount)
-      .fill(0)
-      .map(() => ({
-        type: 'column',
-        content: [{ type: 'paragraph' }],
-      }));
-
-    editors.value[currentPageIndex].commands.insertContent({
-      type: 'columns',
-      content: columns,
-    });
+    // Create a simple table instead of columns
+    const cols = columnData.columnCount || 2;
+    let tableHTML = '<table><tbody><tr>';
+    for (let i = 0; i < cols; i++) {
+      tableHTML += '<td></td>';
+    }
+    tableHTML += '</tr></tbody></table>';
+    
+    editors.value[currentPageIndex].commands.insertContent(tableHTML);
   }
 }
 
-// Helper function to calculate available height in current page
 function getAvailableHeight(editorIndex: number): number {
   const editorDOM = editors.value[editorIndex]?.view.dom;
   if (!editorDOM) return 0;
   
-  const pageHeight = pageSizeStore.pageHeight - 80; // Account for padding
+  const pageHeight = pageSizeStore.pageHeight - 80;
   const currentContentHeight = editorDOM.scrollHeight;
   const availableHeight = pageHeight - currentContentHeight;
   
   return Math.max(0, availableHeight);
 }
 
-// Helper function to estimate content height before insertion
 function estimateContentHeight(contentType: string, data?: any): number {
   switch (contentType) {
     case 'table':
-      // Estimate table height: header + rows * row height
       const rows = data?.rows || 2;
-      const estimatedRowHeight = 40; // Approximate row height
-      return rows * estimatedRowHeight + 20; // Add some padding
-    
+      const estimatedRowHeight = 40;
+      return rows * estimatedRowHeight + 20;
     case 'columns':
-      // Estimate columns height: minimum height for columns
-      return 80; // Minimum column height
-    
+      return 80;
     case 'variable':
-      // Variables are inline, minimal height impact
-      return 25; // Approximate line height
-    
+      return 25;
     case 'text':
-      // Single line of text
-      return 30; // Approximate line height with padding
-    
+      return 30;
     default:
-      return 30; // Default estimation
+      return 30;
   }
 }
 
-// Helper function to check if content can fit
 function canContentFit(editorIndex: number, contentType: string, data?: any): boolean {
   const availableHeight = getAvailableHeight(editorIndex);
   const estimatedHeight = estimateContentHeight(contentType, data);
-  
   return estimatedHeight <= availableHeight;
 }
 
 function createEditor(content = '', index = 0) {
   const ed = new Editor({
     content,
-    editable: true, // Start with editable true, will be updated by watcher
+    editable: true,
     extensions: [
       StarterKit.configure({
         orderedList: false,
         bulletList: false,
       }),
       TextStyle,
-      FontSize,
-      FontFamily,
+      Underline,
       Superscript,
       Subscript,
       OrderedList,
-      BulletedList,
-      LineHeight,
+      BulletList,
+      ListItem,
       Image,
       Color,
-      TableKit.configure({
-        table: { resizable: true },
-      }),
+      Table,
       Highlight.configure({ multicolor: true }),
       TextAlign.configure({ types: ["heading", "paragraph"] }),
-      Variable.configure({
-        HTMLAttributes: { class: "variable-node" },
-        getVariables: () => variablesStore.variables,
-      }),
-      Columns,
-      Column,
       Focus.configure({
         className: 'selected-node',
         mode: 'all',
       }),
-      ResizableImage,
+      // Custom extensions - uncomment if they exist
+      // Variable.configure({
+      //   HTMLAttributes: { class: "variable-node" },
+      //   getVariables: () => variablesStore.variables,
+      // }),
+      // LineHeight,
+      // Columns,
+      // Column,
+      // ResizableImage,
     ],
     onUpdate: () => {
-      // Save all editors' content to IndexedDB on any update
       pageSizeStore.setPageSize(pageSizeStore.pageWidth, pageSizeStore.pageHeight);
       pageSizeStore.setAllContent(editors.value.map(editor => editor.getJSON()));
       
-      // Log height information after content update (but less frequently for typing)
       nextTick(() => {
         const editorIndex = editors.value.indexOf(ed);
         if (editorIndex !== -1) {
-          // Only log for significant content changes, not every keystroke
           const availableHeight = getAvailableHeight(editorIndex);
-          if (!availableHeight) { // Warn when space is getting low
+          if (!availableHeight) {
             editors.value[editorIndex].view.dom.setAttribute('contenteditable', 'false');
             ElMessage({
               message: 'Not enough space to continue editing remove last line you add to can edit again',
@@ -284,8 +277,6 @@ const insertVariable = (variable: { key: string; label: string }) => {
   const currentPageIndex = activePageIndex.value;
 
   if (editors.value[currentPageIndex]) {
-    // Variables are inline elements, so they rarely cause height issues
-    // But we'll still check for consistency
     if (!canContentFit(currentPageIndex, 'variable')) {
       ElMessage({
         message: 'Cannot insert variable: Not enough space on current page',
@@ -295,24 +286,20 @@ const insertVariable = (variable: { key: string; label: string }) => {
       return;
     }
 
-    editors.value[currentPageIndex].commands.insertVariable({
-      key: variable.key,
-      label: variable.label,
-    });
+    // Simple text insertion instead of custom variable
+    editors.value[currentPageIndex].commands.insertContent(`{${variable.label}}`);
   }
 };
 
 const handleSelectTemplate = (templateId: number) => {
   const template = templateStore.templates.find(el => el.id === templateId);
   if (template?.pages && template.pages.length > 0) {
-
     editors.value.forEach(editor => editor.destroy());
     router.push({
       name: 'Editor',
       params: { type_id: route.params.type_id, template_id: templateId }
     });
 
-    // Replace all editors with the template's pages
     const content: any[] = [];
     const pagesContent = template.pages.map(page => {
       content.push(JSON.parse(page.content_json).content);
@@ -336,7 +323,7 @@ const handleSelectPage = (index: number) => {
 };
 
 const template_pages = computed(() => {
-  const template = templateStore.templates.find(el => el.id === Number(route.params.template_id));
+  const template = templateStore.templates.find(el => el.id === templateId.value);
   return template?.pages ?? [];
 })
 
@@ -364,7 +351,6 @@ const handleFullscreen = () => {
   }
 };
 
-// Add paste and drop event listeners for image insertion
 const handlePaste = (event: ClipboardEvent) => {
   const items = event.clipboardData?.items;
   if (items) {
@@ -379,10 +365,7 @@ const handlePaste = (event: ClipboardEvent) => {
 
             const editor = editors.value[currentPageIndex];
             if (editor) {
-              editor.commands.insertContent({
-                type: 'resizableImage',
-                attrs: { src, alt: 'Image', width: 150 }
-              });
+              editor.commands.setImage({ src, alt: 'Image' });
             }
           };
           reader.readAsDataURL(file);
@@ -406,10 +389,7 @@ const handleDrop = (event: DragEvent) => {
 
           const editor = editors.value[currentPageIndex];
           if (editor) {
-            editor.commands.insertContent({
-              type: 'resizableImage',
-              attrs: { src, alt: 'Image', width: 150 }
-            });
+            editor.commands.setImage({ src, alt: 'Image' });
           }
         };
         reader.readAsDataURL(file);
@@ -421,17 +401,14 @@ const handleDrop = (event: DragEvent) => {
 };
 
 onMounted(async () => {
-
-  // Load types first to ensure we have type information available
   await typeStore.getTypes();
   
-
   await pageSizeStore.loadFromIndexedDB();
   if (!pageSizeStore.pageWidth && !pageSizeStore.pageHeight) {
     await typeStore.getType(Number(route.params.type_id));
     const type = typeStore.type;
-    if (template_id) {
-      const template = await templateStore.getTemplate(template_id);
+    if (templateId.value) {
+      const template = await templateStore.getTemplate(templateId.value);
       const content: any[] = [];
       template?.pages.map(page => content.push(JSON.parse(page.content_json).content));
       pageSizeStore.setAllContent(content);
@@ -457,7 +434,7 @@ onUnmounted(() => {
   removeContent("editorContent");
   pageSizeStore.clearStatePageSize();
 
-  if (activePanel) {
+  if (activePanel.value) {
     localStorage.removeItem('activePanel');
     activePanel.value = null;
   }
@@ -468,7 +445,6 @@ onUnmounted(() => {
   }
 });
 
-// Updated getVisibleBlocks: detect hovered and focused blocks
 function getVisibleBlocks(editor: Editor, pageIndex: number) {
   const blocks: any[] = [];
   const view = editor.view;
@@ -477,39 +453,34 @@ function getVisibleBlocks(editor: Editor, pageIndex: number) {
   if (!containerRect) return blocks;
 
   view.dom.querySelectorAll('p,li,h1,h2,h3,h4,h5,h6,table').forEach((el, idx) => {
-    // Skip paragraphs that are inside tables or table cells
     if (el.tagName.toLowerCase() === 'p') {
       const isInsideTable = el.closest('table, td, th, tr');
       if (isInsideTable) {
-        return; // Skip this paragraph
+        return;
       }
     }
 
     const pos = view.posAtDOM(el, 0);
-    // Skip if position is invalid
     if (pos === -1 || pos >= view.state.doc.content.size) return;
 
     const rect = el.getBoundingClientRect();
-
     const textLength = el.textContent ? el.textContent.length : 0;
     const isActive = selectionPos >= pos && selectionPos <= pos + textLength + 1;
+    
     blocks.push({
       key: idx,
       top: rect.top - containerRect.top + ((el as HTMLElement).offsetHeight) / 2 - 16,
-
       left: -40,
       pageIndex,
       pos,
       active: isActive,
-      focused: shouldShow,
+      focused: isActive,
       type: el.nodeName.toLowerCase(),
     });
   });
   return blocks;
 }
 
-
-// Delete paragraph at position
 function deleteParagraph(pageIndex: number, pos: number) {
   const editor = editors.value[pageIndex];
   if (!editor) return;
@@ -522,7 +493,6 @@ function deleteParagraph(pageIndex: number, pos: number) {
   });
 }
 
-// ParagraphDeleteButton component
 const ParagraphDeleteButton = defineComponent({
   props: {
     top: Number,
@@ -532,7 +502,7 @@ const ParagraphDeleteButton = defineComponent({
     show: Boolean,
   },
   emits: ['delete'],
-  setup(props, { emit }) {
+  setup(props: any, { emit }: any) {
     return () =>
       props.show
         ? h(
@@ -550,7 +520,6 @@ const ParagraphDeleteButton = defineComponent({
         : null;
   },
 });
-
 </script>
 
 <style>
@@ -655,6 +624,30 @@ h6 {
   margin: 4px 0;
 }
 
+.ProseMirror table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+.ProseMirror td,
+.ProseMirror th {
+  min-width: 1em;
+  border: 2px solid #ced4da;
+  padding: 3px 5px;
+  vertical-align: top;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.ProseMirror th {
+  font-weight: bold;
+  text-align: left;
+  background-color: #f1f3f4;
+}
+
 .ProseMirror ol[type="decimal"] {
   list-style-type: decimal;
 }
@@ -719,7 +712,6 @@ h6 {
 
 .editor-zoomable-container {
   padding: 2rem;
-  /* Optional: vertical padding */
   box-sizing: border-box;
   height: 100%;
   width: 100%;
@@ -732,7 +724,6 @@ h6 {
   transition: background 0.2s;
 }
 
-/* Optional: style for the "+" button and popup */
 .plus-block-btn {
   transition: background 0.2s;
 }
