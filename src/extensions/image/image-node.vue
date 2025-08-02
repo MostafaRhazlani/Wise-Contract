@@ -20,7 +20,6 @@
             <img :src="node.attrs.src" :alt="node.attrs.alt" :style="{
                 width: node.attrs.width + 'px',
                 height: 'auto',
-                display: 'block',
             }" ref="img" draggable="false" />
             <span v-if="selected" class="resize-handle" @mousedown.prevent="startResize" :style="{
                 border: '2px solid #4ade80',
