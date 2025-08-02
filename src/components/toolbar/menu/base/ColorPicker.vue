@@ -1,30 +1,22 @@
 <template>
   <div ref="pickerRef" class="bg-white border rounded shadow-lg w-64 p-3">
     <div class="flex justify-between items-center mb-3">
-        <button 
-          @click="pickColor('default')" 
-          :class="[
-            'w-full p-2 text-xs rounded-sm border hover:border-green-500 hover:text-green-500 transition-colors duration-200',
-            selectedColor[mode] === 'default' 
-              ? 'bg-blue-100 text-blue-700 border-blue-300' 
-              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-          ]"
-        >
-          Default Color
-        </button>
+      <button @click="pickColor('default')" :class="[
+        'w-full p-2 text-xs rounded-sm border hover:border-green-500 hover:text-green-500 transition-colors duration-200',
+        selectedColor[mode] === 'default'
+          ? 'bg-blue-100 text-blue-700 border-blue-300'
+          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+      ]">
+        Default Color
+      </button>
     </div>
     <!-- Default Colors -->
     <div>
       <div class="font-semibold text-sm mb-1">Colors</div>
       <div class="flex flex-wrap gap-1">
-        <button
-          v-for="color in defaultColors"
-          :key="`default-${color}`"
-          :style="{ backgroundColor: color }"
+        <button v-for="color in defaultColors" :key="`default-${color}`" :style="{ backgroundColor: color }"
           class="w-6 h-6 rounded border border-gray-200 hover:opacity-80 transition-opacity"
-          :class="{ 'ring-2 ring-offset-1 ring-blue-500': selectedColor[mode] === color }"
-          @click="pickColor(color)"
-        >
+          :class="{ 'ring-2 ring-offset-1 ring-blue-500': selectedColor[mode] === color }" @click="pickColor(color)">
         </button>
       </div>
     </div>
@@ -34,23 +26,17 @@
       <div class="w-full border-t bg-gray-200 my-2"></div>
       <div class="flex items-center gap-2">
         <div class="relative w-full">
-          <button
-            @click="() => colorInputRef?.click()"
-            class="flex items-center justify-between w-full px-2 py-2 rounded bg-gray-200"
-          >
+          <button @click="() => colorInputRef?.click()"
+            class="flex items-center justify-between w-full px-2 py-2 rounded bg-gray-200">
             <div class="flex items-center gap-1">
               <Icon icon="streamline-ultimate-color:color-palette-2" color="#fff" width="20px" height="20px" />
               <span class="text-sm">More Colors</span>
             </div>
-            <ChevronRight :size="16"/>
+            <ChevronRight :size="16" />
           </button>
-          <input
-            ref="colorInputRef"
-            type="color"
+          <input ref="colorInputRef" type="color"
             :value="selectedColor[mode] && selectedColor[mode] !== 'default' ? selectedColor[mode] : '#000000'"
-            @input="onColorInput"
-            class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-          />
+            @input="onColorInput" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
         </div>
       </div>
     </div>
@@ -63,8 +49,8 @@ import type { Ref } from 'vue'
 import { Icon } from '@iconify/vue'
 import { ChevronRight } from 'lucide-vue-next'
 
-const props = defineProps<{ 
-  editor: any, 
+const props = defineProps<{
+  editor: any,
   mode: 'color' | 'highlight' | 'background'
 }>()
 
@@ -115,7 +101,7 @@ function onColorInput(e: Event) {
 
 function pickColor(color: string) {
   selectedColor.value[props.mode] = color;
-  
+
   if (color !== 'default') {
     switch (props.mode) {
       case 'color':
@@ -128,7 +114,7 @@ function pickColor(color: string) {
         // For table cells, we need to handle the background color differently
         const attrs = props.editor?.getAttributes('tableCell') || {};
         const currentStyles = attrs.htmlAttributes?.style || '';
-        
+                
         // Parse existing styles into an object for easier manipulation
         const styleObject: Record<string, string> = {};
         currentStyles.split(';').forEach((style: string) => {
@@ -140,13 +126,13 @@ function pickColor(color: string) {
         
         // Update or add the background color
         styleObject['background-color'] = color;
-        
+
         // Convert back to style string
         const newStyles = Object.entries(styleObject)
           .filter(([_, value]) => value) // Remove empty values
           .map(([key, value]) => `${key}: ${value}`)
           .join('; ');
-        
+
         // Update the table cell attributes
         props.editor?.chain().focus().updateAttributes('tableCell', {
           ...attrs,
@@ -170,7 +156,7 @@ function pickColor(color: string) {
         // For table cells, we need to handle the background color removal
         const attrs = props.editor?.getAttributes('tableCell') || {};
         const currentStyles = attrs.htmlAttributes?.style || '';
-        
+
         // Parse existing styles into an object for easier manipulation
         const styleObject: Record<string, string> = {};
         currentStyles.split(';').forEach((style: string) => {
@@ -179,14 +165,14 @@ function pickColor(color: string) {
             styleObject[key] = value;
           }
         });
-        
+
         // Convert back to style string (or undefined if empty)
         const newStyles = Object.keys(styleObject).length > 0
           ? Object.entries(styleObject)
-              .map(([key, value]) => `${key}: ${value}`)
-              .join('; ')
+            .map(([key, value]) => `${key}: ${value}`)
+            .join('; ')
           : undefined;
-        
+
         // Update the table cell attributes
         props.editor?.chain().focus().updateAttributes('tableCell', {
           ...attrs,
@@ -198,7 +184,7 @@ function pickColor(color: string) {
         break;
     }
   }
-  
+
   // Close after selection
   close();
 }

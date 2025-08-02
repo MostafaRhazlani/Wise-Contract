@@ -85,10 +85,7 @@ onMounted(async () => {
   
   // Only load templates if not provided via props (not in modal)
   if (templateStore.templates.length === 0) {
-    await templateStore.getTemplatesCompanyWithType(Number(route.params.type_id));
-    console.log(templateStore.templates);
-    console.log(props.selectedTemplate);
-    
+    await templateStore.getTemplatesCompanyWithType(Number(route.params.type_id));  
   }
     
   // }
